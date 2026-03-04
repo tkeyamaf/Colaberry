@@ -61,6 +61,18 @@ export function canAllocateFitThreshold(fitScore: number): boolean {
   return fitScore >= 70;
 }
 
+async function hasDuplicateAllocation(studentId: string, jobId: string): Promise<boolean> {
+  const result = await pool.query(
+    `SELECT 1
+     FROM allocation_ledger
+     WHERE student_id = $1 AND job_id = $2
+     LIMIT 1`,
+    [studentId, jobId]
+  );
+
+  return result.rows.length > 0;
+}
+
 export async function canAllocate(
   studentId: string,
   jobId: string,
@@ -70,6 +82,10 @@ export async function canAllocate(
 ): Promise<{ allowed: boolean; reason?: string }> {
   if (!canAllocateFitThreshold(fitScore)) {
     return { allowed: false, reason: 'FIT_THRESHOLD' };
+  }
+
+  if (await hasDuplicateAllocation(studentId, jobId)) {
+    return { allowed: false, reason: 'DUPLICATE_APPLICATION' };
   }
 
   if (!await canAllocateJobCap(jobId)) {
