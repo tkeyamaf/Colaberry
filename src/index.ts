@@ -6,6 +6,8 @@ import { getRecommendedJobs } from './services/recommendationService';
 import { allocateJobTransaction } from './services/allocationTransactionService';
 import candidatesRouter from './routes/candidates';
 import jobsRouter from './routes/jobs';
+import aiRouter from './routes/ai';
+import notificationsRouter from './routes/notifications';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -159,6 +161,8 @@ app.post('/allocate', async (req: Request, res: Response) => {
 
 app.use('/api', candidatesRouter);
 app.use('/api', jobsRouter);
+app.use('/api', aiRouter);
+app.use('/api', notificationsRouter);
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);

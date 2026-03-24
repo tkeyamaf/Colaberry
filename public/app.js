@@ -23,7 +23,7 @@ const REASON_MESSAGES = {
   COMPANY_MISMATCH:   'The Company ID doesn\'t match this job\'s employer. Please double-check both IDs.',
 };
 
-const SECTIONS = ['home', 'jobs', 'eligibility', 'recommendations', 'profile', 'about'];
+const SECTIONS = ['home', 'jobs', 'eligibility', 'recommendations', 'profile', 'applications', 'about'];
 
 // ---------------------------------------------------------------------------
 // Navigation
@@ -148,9 +148,21 @@ function buildJobCard(job) {
   const barClass    = fitBarClass(score);
   const sBadge      = statusClass(status);
 
+  const titleEscaped    = title.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+  const companyEscaped  = company.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+  const descEscaped     = escHtml(job.description || '').replace(/'/g, "\\'");
+
   const actionBtn = url
-    ? `<div class="job-card-actions"><a href="${escHtml(url)}" target="_blank" rel="noopener" class="job-view-btn">View Details &#8594;</a></div>`
-    : `<div class="job-card-actions"><button class="job-view-btn" type="button" onclick="void(0)">View Details &#8594;</button></div>`;
+    ? `<div class="job-card-actions">
+         <a href="${escHtml(url)}" target="_blank" rel="noopener" class="job-view-btn">View Details &#8594;</a>
+         <button class="interview-prep-btn" type="button" onclick="openInterviewModal('${titleEscaped}', '${descEscaped}')">&#127919; Interview Prep</button>
+         <button class="interview-prep-btn" type="button" onclick="trackApplicationFromCard('${titleEscaped}', '${companyEscaped}')">+ Track</button>
+       </div>`
+    : `<div class="job-card-actions">
+         <button class="job-view-btn" type="button" onclick="void(0)">View Details &#8594;</button>
+         <button class="interview-prep-btn" type="button" onclick="openInterviewModal('${titleEscaped}', '${descEscaped}')">&#127919; Interview Prep</button>
+         <button class="interview-prep-btn" type="button" onclick="trackApplicationFromCard('${titleEscaped}', '${companyEscaped}')">+ Track</button>
+       </div>`;
 
   const jobTypeBadge = jobType
     ? `<span class="job-type-badge">${jobType}</span>`
@@ -834,6 +846,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initRecommendationsSection();
   initProfileSection();
   initFaqAccordion();
+  initApplicationsSection();
 
   // ----- Hash-based routing -----
   const hash = window.location.hash.replace('#', '').toLowerCase();
@@ -849,3 +862,409 @@ document.addEventListener('DOMContentLoaded', () => {
     showSection(SECTIONS.includes(h) ? h : 'home');
   });
 });
+
+// ---------------------------------------------------------------------------
+// AI RESUME MODAL
+// ---------------------------------------------------------------------------
+let _currentResumeHtml = '';
+
+function generateAIResume() {
+  openResumeModal();
+}
+
+function openResumeModal() {
+  document.getElementById('resume-modal').classList.remove('hidden');
+  document.getElementById('resume-modal-idle').classList.remove('hidden');
+  document.getElementById('resume-modal-loading').classList.add('hidden');
+  document.getElementById('resume-modal-result').classList.add('hidden');
+  hideError(document.getElementById('resume-modal-error'));
+  document.body.style.overflow = 'hidden';
+}
+
+function closeResumeModal() {
+  document.getElementById('resume-modal').classList.add('hidden');
+  document.body.style.overflow = '';
+}
+
+async function runAIResumeGeneration() {
+  const idleEl    = document.getElementById('resume-modal-idle');
+  const loadingEl = document.getElementById('resume-modal-loading');
+  const resultEl  = document.getElementById('resume-modal-result');
+  const errorEl   = document.getElementById('resume-modal-error');
+  const previewEl = document.getElementById('resume-preview-box');
+
+  idleEl.classList.add('hidden');
+  hideError(errorEl);
+  loadingEl.classList.remove('hidden');
+  resultEl.classList.add('hidden');
+
+  // Gather profile form data
+  const candidateData = gatherProfileData();
+
+  try {
+    const res  = await fetch(`${API_BASE}/api/ai/resume`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ candidateData }),
+    });
+    const data = await res.json();
+
+    loadingEl.classList.add('hidden');
+
+    if (!res.ok) {
+      showError(errorEl, data.error || `Request failed (${res.status})`);
+      idleEl.classList.remove('hidden');
+      return;
+    }
+
+    _currentResumeHtml = data.html || '';
+    previewEl.innerHTML = _currentResumeHtml;
+    resultEl.classList.remove('hidden');
+  } catch (err) {
+    loadingEl.classList.add('hidden');
+    showError(errorEl, 'Network error — please check your connection and try again.');
+    idleEl.classList.remove('hidden');
+  }
+}
+
+function printResume() {
+  window.print();
+}
+
+// ---------------------------------------------------------------------------
+// INTERVIEW PREP MODAL
+// ---------------------------------------------------------------------------
+let _interviewJobTitle = '';
+let _interviewJobDesc  = '';
+
+function openInterviewModal(jobTitle, jobDescription) {
+  _interviewJobTitle = jobTitle || '';
+  _interviewJobDesc  = jobDescription || '';
+
+  const subtitle = document.getElementById('interview-modal-subtitle');
+  if (subtitle) subtitle.textContent = `Preparing you for: ${_interviewJobTitle}`;
+
+  const titleEl = document.getElementById('interview-modal-title');
+  if (titleEl) titleEl.textContent = `\u{1F3AF} Interview Preparation: ${_interviewJobTitle}`;
+
+  document.getElementById('interview-modal').classList.remove('hidden');
+  document.getElementById('interview-modal-idle').classList.remove('hidden');
+  document.getElementById('interview-modal-loading').classList.add('hidden');
+  document.getElementById('interview-modal-result').classList.add('hidden');
+  hideError(document.getElementById('interview-modal-error'));
+  document.body.style.overflow = 'hidden';
+}
+
+function closeInterviewModal() {
+  document.getElementById('interview-modal').classList.add('hidden');
+  document.body.style.overflow = '';
+}
+
+async function runInterviewPrepGeneration() {
+  const idleEl    = document.getElementById('interview-modal-idle');
+  const loadingEl = document.getElementById('interview-modal-loading');
+  const resultEl  = document.getElementById('interview-modal-result');
+  const errorEl   = document.getElementById('interview-modal-error');
+  const prepEl    = document.getElementById('interview-prep-box');
+
+  idleEl.classList.add('hidden');
+  hideError(errorEl);
+  loadingEl.classList.remove('hidden');
+  resultEl.classList.add('hidden');
+
+  const candidateName = getVal('pf-full-name');
+
+  try {
+    const res  = await fetch(`${API_BASE}/api/ai/interview-prep`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({
+        jobTitle:        _interviewJobTitle,
+        jobDescription:  _interviewJobDesc,
+        candidateName:   candidateName || undefined,
+      }),
+    });
+    const data = await res.json();
+
+    loadingEl.classList.add('hidden');
+
+    if (!res.ok) {
+      showError(errorEl, data.error || `Request failed (${res.status})`);
+      idleEl.classList.remove('hidden');
+      return;
+    }
+
+    prepEl.innerHTML = data.html || '';
+    resultEl.classList.remove('hidden');
+  } catch (err) {
+    loadingEl.classList.add('hidden');
+    showError(errorEl, 'Network error — please check your connection and try again.');
+    idleEl.classList.remove('hidden');
+  }
+}
+
+// ---------------------------------------------------------------------------
+// EMAIL NOTIFICATIONS
+// ---------------------------------------------------------------------------
+async function sendInterviewEmail(candidateEmail, candidateName, jobTitle, companyName, interviewDate) {
+  try {
+    const res  = await fetch(`${API_BASE}/api/notifications/interview`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ candidateEmail, candidateName, jobTitle, companyName, interviewDate }),
+    });
+    const data = await res.json();
+    return data;
+  } catch (err) {
+    return { success: false, error: 'Network error' };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// JOB APPLICATION TRACKER  (localStorage)
+// ---------------------------------------------------------------------------
+const APPS_KEY = 'cb_applications';
+
+function loadApplications() {
+  try {
+    return JSON.parse(localStorage.getItem(APPS_KEY) || '[]');
+  } catch {
+    return [];
+  }
+}
+
+function saveApplicationsToStorage(apps) {
+  localStorage.setItem(APPS_KEY, JSON.stringify(apps));
+}
+
+function saveApplication(jobTitle, companyName, status, notes) {
+  const apps = loadApplications();
+  const entry = {
+    id:        crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36),
+    jobTitle,
+    companyName,
+    status:    status || 'APPLIED',
+    notes:     notes || '',
+    appliedAt: new Date().toISOString(),
+    emailSent: false,
+  };
+  apps.unshift(entry);
+  saveApplicationsToStorage(apps);
+  return entry;
+}
+
+function updateApplicationStatus(id, newStatus) {
+  const apps = loadApplications();
+  const idx  = apps.findIndex(a => a.id === id);
+  if (idx === -1) return null;
+  apps[idx].status = newStatus;
+  saveApplicationsToStorage(apps);
+  renderApplications();
+
+  // Offer to send interview email if status changed to INTERVIEW
+  if (newStatus === 'INTERVIEW') {
+    const app = apps[idx];
+    promptInterviewEmail(app);
+  }
+  return apps[idx];
+}
+
+function deleteApplication(id) {
+  const apps = loadApplications().filter(a => a.id !== id);
+  saveApplicationsToStorage(apps);
+  renderApplications();
+}
+
+function promptInterviewEmail(app) {
+  const candidateEmail = getVal('pf-email');
+  const candidateName  = getVal('pf-full-name');
+
+  if (!candidateEmail) {
+    alert(`Status updated to INTERVIEW for "${app.jobTitle}" at ${app.companyName}.\n\nFill in your email on the Profile page to send yourself an interview notification.`);
+    return;
+  }
+
+  const send = confirm(`Send an interview notification email to ${candidateEmail} for "${app.jobTitle}" at ${app.companyName}?`);
+  if (!send) return;
+
+  sendInterviewEmail(candidateEmail, candidateName || 'Candidate', app.jobTitle, app.companyName)
+    .then(result => {
+      if (result.success) {
+        alert('Interview notification email sent!');
+        const apps = loadApplications();
+        const idx  = apps.findIndex(a => a.id === app.id);
+        if (idx !== -1) { apps[idx].emailSent = true; saveApplicationsToStorage(apps); renderApplications(); }
+      } else {
+        alert(`Email failed: ${result.error}`);
+      }
+    });
+}
+
+function renderApplications() {
+  const apps    = loadApplications();
+  const listEl  = document.getElementById('applications-list');
+  const emptyEl = document.getElementById('applications-empty');
+
+  if (!listEl) return;
+
+  if (apps.length === 0) {
+    listEl.innerHTML = '';
+    if (emptyEl) emptyEl.classList.remove('hidden');
+    return;
+  }
+
+  if (emptyEl) emptyEl.classList.add('hidden');
+
+  const statusOptions = ['APPLIED', 'REVIEWING', 'INTERVIEW', 'OFFER', 'REJECTED'];
+
+  const rows = apps.map(app => {
+    const date   = new Date(app.appliedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const opts   = statusOptions.map(s =>
+      `<option value="${s}"${s === app.status ? ' selected' : ''}>${s}</option>`
+    ).join('');
+    const emailBtn = app.status === 'INTERVIEW' && !app.emailSent
+      ? `<button class="btn btn-sm btn-outline" onclick="promptInterviewEmail(${JSON.stringify(app).replace(/"/g, '&quot;')})">&#128231; Send Email</button>`
+      : '';
+
+    return `
+      <tr>
+        <td><strong>${escHtml(app.jobTitle)}</strong></td>
+        <td>${escHtml(app.companyName)}</td>
+        <td><span class="app-status-badge app-status-${app.status}">${app.status}</span></td>
+        <td>${date}</td>
+        <td>
+          <div class="app-action-row">
+            <select class="app-status-select" onchange="updateApplicationStatus('${app.id}', this.value)">
+              ${opts}
+            </select>
+            <button class="btn btn-sm btn-outline interview-prep-btn" onclick="openInterviewModal('${escHtml(app.jobTitle).replace(/'/g,"\\'")}', '')">&#127919; Prep</button>
+            ${emailBtn}
+            <button class="btn btn-sm btn-danger" onclick="deleteApplication('${app.id}')">&#10005;</button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  listEl.innerHTML = `
+    <table class="applications-table">
+      <thead>
+        <tr>
+          <th>Job Title</th>
+          <th>Company</th>
+          <th>Status</th>
+          <th>Applied</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `;
+}
+
+function initApplicationsSection() {
+  renderApplications();
+}
+
+// ---------------------------------------------------------------------------
+// ADD APPLICATION MODAL
+// ---------------------------------------------------------------------------
+function showAddApplicationModal() {
+  document.getElementById('add-application-modal').classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeAddApplicationModal() {
+  document.getElementById('add-application-modal').classList.add('hidden');
+  document.body.style.overflow = '';
+}
+
+function trackApplicationFromCard(jobTitle, company) {
+  const titleInput = document.getElementById('app-job-title');
+  const compInput  = document.getElementById('app-company');
+  if (titleInput) titleInput.value = jobTitle;
+  if (compInput)  compInput.value  = company;
+  showAddApplicationModal();
+  showSection('applications');
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  // Close modals when clicking the backdrop overlay
+  ['resume-modal', 'interview-modal', 'add-application-modal'].forEach(id => {
+    const overlay = document.getElementById(id);
+    if (overlay) {
+      overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) {
+          overlay.classList.add('hidden');
+          document.body.style.overflow = '';
+        }
+      });
+    }
+  });
+
+  const addForm = document.getElementById('add-application-form');
+  if (addForm) {
+    addForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+
+      const titleEl   = document.getElementById('app-job-title');
+      const compEl    = document.getElementById('app-company');
+      const statusEl  = document.getElementById('app-status');
+      const notesEl   = document.getElementById('app-notes');
+      const titleErrEl = document.getElementById('app-job-title-error');
+      const compErrEl  = document.getElementById('app-company-error');
+
+      let valid = true;
+      if (!titleEl || !titleEl.value.trim()) {
+        if (titleErrEl) titleErrEl.textContent = 'Job title is required';
+        valid = false;
+      } else { if (titleErrEl) titleErrEl.textContent = ''; }
+
+      if (!compEl || !compEl.value.trim()) {
+        if (compErrEl) compErrEl.textContent = 'Company is required';
+        valid = false;
+      } else { if (compErrEl) compErrEl.textContent = ''; }
+
+      if (!valid) return;
+
+      saveApplication(
+        titleEl.value.trim(),
+        compEl.value.trim(),
+        statusEl ? statusEl.value : 'APPLIED',
+        notesEl  ? notesEl.value.trim() : ''
+      );
+
+      addForm.reset();
+      closeAddApplicationModal();
+      showSection('applications');
+      renderApplications();
+    });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// HELPER — gather profile form data for AI resume
+// ---------------------------------------------------------------------------
+function gatherProfileData() {
+  const jobTypeCheckboxes = document.querySelectorAll('input[name="job_types"]:checked');
+  const jobTypes = Array.from(jobTypeCheckboxes).map(cb => cb.value);
+  const workSettingRadio = document.querySelector('input[name="work_setting"]:checked');
+
+  return {
+    fullName:           getVal('pf-full-name'),
+    email:              getVal('pf-email'),
+    phone:              getVal('pf-phone'),
+    city:               getVal('pf-city'),
+    state:              getVal('pf-state'),
+    summary:            getVal('pf-summary'),
+    education:          getVal('pf-education'),
+    yearsExperience:    getVal('pf-years-exp'),
+    workAuthorization:  getVal('pf-work-auth'),
+    linkedinUrl:        getVal('pf-linkedin'),
+    portfolioUrl:       getVal('pf-portfolio'),
+    salaryMin:          getVal('pf-salary-min'),
+    salaryMax:          getVal('pf-salary-max'),
+    jobTypes:           jobTypes,
+    workSetting:        workSettingRadio ? workSettingRadio.value : 'ANY',
+  };
+}

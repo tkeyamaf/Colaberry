@@ -32,6 +32,7 @@
         <li><a href="#eligibility"     class="nav-link" data-section="eligibility">Eligibility</a></li>
         <li><a href="#recommendations" class="nav-link" data-section="recommendations">Recommendations</a></li>
         <li><a href="#profile"         class="nav-link" data-section="profile">Profile</a></li>
+        <li><a href="#applications"    class="nav-link" data-section="applications">My Applications</a></li>
         <li><a href="#about"           class="nav-link" data-section="about">About</a></li>
       </ul>
     </div>
@@ -107,6 +108,31 @@
           </div>
         </div>
       </div>
+
+      <!-- Companies Section -->
+      <section class="companies-section">
+        <div class="container">
+          <p class="companies-label">People Using CareerBridge Get Hired At</p>
+          <p class="companies-subtitle">Join thousands of professionals who found their dream careers</p>
+          <div class="companies-grid">
+            <div class="company-badge company-google">Google</div>
+            <div class="company-badge company-apple">Apple</div>
+            <div class="company-badge company-microsoft">Microsoft</div>
+            <div class="company-badge company-amazon">Amazon</div>
+            <div class="company-badge company-meta">Meta</div>
+            <div class="company-badge company-netflix">Netflix</div>
+            <div class="company-badge company-salesforce">Salesforce</div>
+            <div class="company-badge company-deloitte">Deloitte</div>
+            <div class="company-badge company-jpmorgan">JPMorgan</div>
+            <div class="company-badge company-mckinsey">McKinsey</div>
+          </div>
+          <div class="companies-stats">
+            <div class="stat">10,000+ <span>Placements</span></div>
+            <div class="stat">500+ <span>Partner Companies</span></div>
+            <div class="stat">98% <span>Satisfaction Rate</span></div>
+          </div>
+        </div>
+      </section>
 
       <!-- How It Works -->
       <div class="how-it-works">
@@ -186,6 +212,26 @@
       </div>
 
       <div id="jobs-error" class="error-banner hidden"></div>
+    </section>
+
+    <!-- ===== MY APPLICATIONS SECTION ===== -->
+    <section id="section-applications" class="section">
+      <div class="page-header">
+        <h2 class="page-title">My Applications</h2>
+        <p class="page-sub">Track all your job applications in one place.</p>
+      </div>
+
+      <div class="applications-wrapper">
+        <div class="applications-toolbar">
+          <button class="btn btn-primary" onclick="showAddApplicationModal()">+ Track New Application</button>
+        </div>
+        <div id="applications-empty" class="empty-state hidden">
+          <div class="empty-icon">&#128196;</div>
+          <p class="empty-title">No applications tracked yet</p>
+          <p class="empty-sub">Click "Track New Application" to start tracking your job search.</p>
+        </div>
+        <div id="applications-list" class="applications-table-wrapper"></div>
+      </div>
     </section>
 
     <!-- ===== ELIGIBILITY SECTION ===== -->
@@ -570,6 +616,17 @@
                   <button type="button" class="btn-icon" id="resume-remove-btn" aria-label="Remove file">&#10005;</button>
                 </div>
               </div>
+
+              <div class="ai-resume-divider">
+                <span>— or —</span>
+              </div>
+
+              <div class="ai-resume-cta">
+                <p class="ai-resume-cta-text">Let AI craft a professional resume from your profile data</p>
+                <button type="button" class="btn ai-generate-btn" onclick="generateAIResume()">
+                  &#10024; Generate AI Resume
+                </button>
+              </div>
             </div>
           </div>
 
@@ -773,6 +830,109 @@
     </section>
 
   </main>
+
+  <!-- ===== AI RESUME MODAL ===== -->
+  <div id="resume-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="resume-modal-title">
+    <div class="modal-box modal-box-wide">
+      <div class="modal-header">
+        <h2 id="resume-modal-title" class="modal-title">&#10024; AI Resume Builder</h2>
+        <button class="modal-close" onclick="closeResumeModal()" aria-label="Close">&#10005;</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-intro">We'll create a professional, ATS-friendly resume based on your profile information.</p>
+        <div id="resume-modal-idle">
+          <button class="btn ai-generate-btn btn-full" onclick="runAIResumeGeneration()">
+            <span class="btn-text">&#10024; Generate My Resume</span>
+            <span class="btn-spinner hidden"></span>
+          </button>
+        </div>
+        <div id="resume-modal-loading" class="ai-loading-state hidden">
+          <div class="loading-spinner-lg"></div>
+          <p>Our AI is crafting your resume&hellip;</p>
+        </div>
+        <div id="resume-modal-result" class="hidden">
+          <div id="resume-preview-box" class="resume-output-wrapper"></div>
+          <div class="modal-actions">
+            <button class="btn btn-outline" onclick="printResume()">&#128424; Download / Print Resume</button>
+            <button class="btn btn-primary" onclick="runAIResumeGeneration()">&#8635; Regenerate</button>
+          </div>
+        </div>
+        <div id="resume-modal-error" class="error-banner hidden"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== INTERVIEW PREP MODAL ===== -->
+  <div id="interview-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="interview-modal-title">
+    <div class="modal-box modal-box-wide">
+      <div class="modal-header">
+        <h2 id="interview-modal-title" class="modal-title">&#127919; Interview Preparation</h2>
+        <button class="modal-close" onclick="closeInterviewModal()" aria-label="Close">&#10005;</button>
+      </div>
+      <div class="modal-body">
+        <p id="interview-modal-subtitle" class="modal-intro"></p>
+        <div id="interview-modal-idle">
+          <button class="btn ai-generate-btn btn-full" onclick="runInterviewPrepGeneration()">
+            <span class="btn-text">&#10024; Generate Interview Tips</span>
+            <span class="btn-spinner hidden"></span>
+          </button>
+        </div>
+        <div id="interview-modal-loading" class="ai-loading-state hidden">
+          <div class="loading-spinner-lg"></div>
+          <p>Preparing your personalised interview guide&hellip;</p>
+        </div>
+        <div id="interview-modal-result" class="hidden">
+          <div id="interview-prep-box" class="interview-prep-output-wrapper"></div>
+          <div class="modal-actions">
+            <button class="btn btn-primary" onclick="runInterviewPrepGeneration()">&#8635; Regenerate</button>
+          </div>
+        </div>
+        <div id="interview-modal-error" class="error-banner hidden"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== ADD APPLICATION MODAL ===== -->
+  <div id="add-application-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="add-app-modal-title">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h2 id="add-app-modal-title" class="modal-title">Track New Application</h2>
+        <button class="modal-close" onclick="closeAddApplicationModal()" aria-label="Close">&#10005;</button>
+      </div>
+      <div class="modal-body">
+        <form id="add-application-form" novalidate>
+          <div class="form-group">
+            <label for="app-job-title">Job Title <span class="required">*</span></label>
+            <input type="text" id="app-job-title" placeholder="e.g. Software Engineer" />
+            <span class="field-error" id="app-job-title-error"></span>
+          </div>
+          <div class="form-group">
+            <label for="app-company">Company <span class="required">*</span></label>
+            <input type="text" id="app-company" placeholder="e.g. Acme Corp" />
+            <span class="field-error" id="app-company-error"></span>
+          </div>
+          <div class="form-group">
+            <label for="app-status">Status</label>
+            <select id="app-status">
+              <option value="APPLIED">Applied</option>
+              <option value="REVIEWING">Reviewing</option>
+              <option value="INTERVIEW">Interview</option>
+              <option value="OFFER">Offer</option>
+              <option value="REJECTED">Rejected</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="app-notes">Notes</label>
+            <textarea id="app-notes" rows="3" placeholder="Any notes about this application..."></textarea>
+          </div>
+          <div class="modal-actions">
+            <button type="button" class="btn btn-outline" onclick="closeAddApplicationModal()">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save Application</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
 
   <!-- ===== FOOTER ===== -->
   <footer class="footer">
