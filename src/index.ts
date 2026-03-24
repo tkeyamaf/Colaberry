@@ -9,6 +9,19 @@ const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
 
+app.get('/', (_req: Request, res: Response) => {
+  res.json({
+    name: 'Job Allocation System',
+    version: '1.0.0',
+    endpoints: [
+      'GET /health',
+      'GET /allocate/check',
+      'POST /allocate',
+      'GET /jobs/recommend',
+    ],
+  });
+});
+
 app.get('/health', (_req: Request, res: Response) => {
   res.json({ status: 'ok' });
 });
