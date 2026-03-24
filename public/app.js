@@ -211,12 +211,18 @@ function clearAuth() {
 // Auth: Signup
 // ---------------------------------------------------------------------------
 async function signup(fullName, email, password) {
-  const res = await fetch(`${API_BASE}/api/auth/signup`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ fullName, email, password }),
-  });
+  let res;
+  try {
+    res = await fetch(`${API_BASE}/api/auth/signup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fullName, email, password }),
+    });
+  } catch {
+    throw new Error('Could not connect. Please try again.');
+  }
   const data = await res.json();
+  if (res.status === 409) throw new Error('An account with this email already exists');
   if (!res.ok) throw new Error(data.error || 'Signup failed');
   return data;
 }
@@ -225,12 +231,18 @@ async function signup(fullName, email, password) {
 // Auth: Login
 // ---------------------------------------------------------------------------
 async function login(email, password) {
-  const res = await fetch(`${API_BASE}/api/auth/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password }),
-  });
+  let res;
+  try {
+    res = await fetch(`${API_BASE}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+  } catch {
+    throw new Error('Could not connect. Please try again.');
+  }
   const data = await res.json();
+  if (res.status === 401) throw new Error('Invalid email or password');
   if (!res.ok) throw new Error(data.error || 'Login failed');
   return data;
 }
@@ -277,7 +289,8 @@ async function loadJobs(query = '', statusFilter = '', locationFilter = '') {
     const res = await fetch(`${API_BASE}/api/jobs?${params}`);
     if (!res.ok) throw new Error('Failed to fetch jobs');
 
-    const jobs = await res.json();
+    const raw = await res.json();
+    const jobs = Array.isArray(raw) ? raw : (raw.jobs || raw.data || []);
     state.jobs = jobs;
 
     // Also load saved jobs if logged in
@@ -285,12 +298,12 @@ async function loadJobs(query = '', statusFilter = '', locationFilter = '') {
       await refreshSavedJobIds();
     }
 
+    jobsLoaded = true;
     if (jobs.length === 0) {
       grid.style.display = 'none';
       if (empty) empty.style.display = 'block';
     } else {
       grid.innerHTML = jobs.map(job => renderJobCard(job, { showSave: true, showApply: true })).join('');
-      jobsLoaded = true;
     }
 
     // Show fit score badge if logged in
@@ -327,7 +340,7 @@ function renderJobCard(job, options = {}) {
   const saveBtn = showSave
     ? `<button class="btn-save ${isSaved ? 'saved' : ''}" data-job-id="${escHtml(job.id)}" onclick="toggleSaveJob(this)"
          title="${isSaved ? 'Unsave job' : 'Save job'}" aria-label="${isSaved ? 'Unsave' : 'Save'}">
-         ${isSaved ? '🔖' : '🔖'}
+         ${isSaved ? '❤️' : '🤍'}
        </button>`
     : '';
 
@@ -352,7 +365,7 @@ function renderJobCard(job, options = {}) {
         <div class="job-location">📍 ${escHtml(job.location || 'Location not specified')}</div>
       </div>
       ${job.jobType ? `<span class="job-type-badge">${escHtml(job.jobType)}</span>` : ''}
-      <p class="job-desc">${escHtml(job.description || '')}</p>
+      <p class="job-desc">${escHtml((job.description || '').slice(0, 150) + ((job.description || '').length > 150 ? '…' : ''))}</p>
       <div class="job-fit-bar-wrap">
         <div class="job-fit-label">Min fit score: ${escHtml(String(fitMin))}</div>
         <div class="job-fit-bar"><div class="job-fit-fill" style="width:${fitMin}%"></div></div>
@@ -503,7 +516,7 @@ async function loadDashboard() {
 }
 
 function renderDashboard(data) {
-  const { user, savedJobs, recentApplications } = data;
+  const { user, savedJobs, recentApplications, savedJobsTotal, applicationsTotal } = data;
 
   // Header
   const welcome = document.getElementById('dash-welcome-name');
@@ -521,11 +534,11 @@ function renderDashboard(data) {
     ring.style.strokeDashoffset = offset;
   }
 
-  // Saved / apps counts
+  // Saved / apps counts — use server totals when available, fall back to array length
   const savedCount = document.getElementById('dash-saved-count');
   const appsCount  = document.getElementById('dash-apps-count');
-  if (savedCount) savedCount.textContent = savedJobs.length;
-  if (appsCount)  appsCount.textContent  = recentApplications.length;
+  if (savedCount) savedCount.textContent = savedJobsTotal ?? savedJobs.length;
+  if (appsCount)  appsCount.textContent  = applicationsTotal ?? recentApplications.length;
 
   // Profile completion %
   const profilePct = document.getElementById('dash-profile-pct');
@@ -714,18 +727,27 @@ function showResumeFile(file, labelEl) {
 function populateEligJobSelect() {
   const select = document.getElementById('elig-job-select');
   if (!select) return;
+
+  // Load jobs first if not yet loaded
+  if (state.jobs.length === 0 && !jobsLoaded) {
+    loadJobs().then(() => populateEligJobSelect());
+    return;
+  }
+
   select.innerHTML = '<option value="">— select a job —</option>';
-  state.jobs.slice(0, 20).forEach(j => {
+  state.jobs.slice(0, 50).forEach(j => {
     const opt = document.createElement('option');
-    opt.value = JSON.stringify({ jobId: j.id, companyId: '' });
+    opt.value = JSON.stringify({ jobId: j.id, companyId: j.companyId || j.company_id || '' });
     opt.textContent = `${j.title} — ${j.company}`;
     select.appendChild(opt);
   });
 
   // Auto-fill student ID / fit score if logged in
   if (state.currentUser) {
-    const fitEl = document.getElementById('elig-fit-score');
-    if (fitEl && !fitEl.value) fitEl.value = state.currentUser.fitScore ?? '';
+    const studentIdEl = document.getElementById('elig-student-id');
+    const fitEl       = document.getElementById('elig-fit-score');
+    if (studentIdEl && !studentIdEl.value) studentIdEl.value = state.currentUser.id || '';
+    if (fitEl       && !fitEl.value)       fitEl.value       = state.currentUser.fitScore ?? '';
   }
 }
 
@@ -735,9 +757,11 @@ function setupEligJobSelect() {
   select.addEventListener('change', () => {
     if (!select.value) return;
     try {
-      const parsed = JSON.parse(select.value);
-      const jobIdEl = document.getElementById('elig-job-id');
-      if (jobIdEl && parsed.jobId) jobIdEl.value = parsed.jobId;
+      const parsed     = JSON.parse(select.value);
+      const jobIdEl    = document.getElementById('elig-job-id');
+      const companyIdEl= document.getElementById('elig-company-id');
+      if (jobIdEl    && parsed.jobId)    jobIdEl.value     = parsed.jobId;
+      if (companyIdEl && parsed.companyId) companyIdEl.value = parsed.companyId;
     } catch { /* ignore */ }
   });
 }
@@ -804,8 +828,10 @@ async function checkEligibility() {
 // ---------------------------------------------------------------------------
 function prefillRecommendations() {
   if (!state.currentUser) return;
-  const fitEl = document.getElementById('rec-fit-score');
-  if (fitEl && !fitEl.value) fitEl.value = state.currentUser.fitScore ?? '';
+  const studentIdEl = document.getElementById('rec-student-id');
+  const fitEl       = document.getElementById('rec-fit-score');
+  if (studentIdEl && !studentIdEl.value) studentIdEl.value = state.currentUser.id || '';
+  if (fitEl       && !fitEl.value)       fitEl.value       = state.currentUser.fitScore ?? '';
 }
 
 async function loadRecommendations() {

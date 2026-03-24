@@ -104,10 +104,12 @@ router.get('/dashboard', async (req: Request, res: Response) => {
   if (!userId) { res.status(401).json({ error: 'Not authenticated' }); return; }
 
   try {
-    const [userRes, savedRes, appsRes] = await Promise.all([
+    const [userRes, savedRes, appsRes, savedCountRes, appsCountRes] = await Promise.all([
       pool.query('SELECT id, full_name, email, student_number, profile_complete, fit_score, created_at FROM users WHERE id = $1', [userId]),
       pool.query('SELECT * FROM saved_jobs WHERE user_id = $1 ORDER BY saved_at DESC LIMIT 5', [userId]),
       pool.query('SELECT * FROM job_applications WHERE user_id = $1 ORDER BY applied_at DESC LIMIT 5', [userId]),
+      pool.query('SELECT COUNT(*) AS total FROM saved_jobs WHERE user_id = $1', [userId]),
+      pool.query('SELECT COUNT(*) AS total FROM job_applications WHERE user_id = $1', [userId]),
     ]);
 
     if (userRes.rows.length === 0) { res.status(404).json({ error: 'User not found' }); return; }
@@ -124,7 +126,9 @@ router.get('/dashboard', async (req: Request, res: Response) => {
         memberSince: user.created_at,
       },
       savedJobs: savedRes.rows,
+      savedJobsTotal: parseInt(savedCountRes.rows[0].total, 10),
       recentApplications: appsRes.rows,
+      applicationsTotal: parseInt(appsCountRes.rows[0].total, 10),
     });
   } catch (err) {
     res.status(500).json({ error: 'Failed to load dashboard' });
