@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>JobMatch — Smart Job Allocation</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+
+  <!-- ===== NAVBAR ===== -->
+  <nav class="navbar" id="navbar">
+    <div class="nav-container">
+      <a class="nav-brand" href="#" data-section="home">
+        <span class="brand-icon">&#9670;</span>
+        JobMatch
+      </a>
+      <button class="hamburger" id="hamburger" aria-label="Toggle navigation" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
+      <ul class="nav-links" id="nav-links">
+        <li><a href="#" class="nav-link active" data-section="home">Home</a></li>
+        <li><a href="#" class="nav-link" data-section="jobs">Jobs</a></li>
+        <li><a href="#" class="nav-link" data-section="eligibility">Eligibility</a></li>
+        <li><a href="#" class="nav-link" data-section="recommendations">Recommendations</a></li>
+        <li><a href="#" class="nav-link" data-section="about">About</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <main class="main-content">
+
+    <!-- ===== HOME SECTION ===== -->
+    <section id="section-home" class="section active">
+      <div class="hero">
+        <div class="hero-content">
+          <div class="hero-badge">Rule-Based Matching Engine</div>
+          <h1 class="hero-title">Smart Job Allocation<br /><span class="accent">Made Simple</span></h1>
+          <p class="hero-sub">
+            Our intelligent allocation system matches students to jobs using transparent,
+            rule-based logic — ensuring fair, consistent, and explainable outcomes every time.
+          </p>
+          <div class="hero-cta">
+            <button class="btn btn-primary btn-lg" data-nav="eligibility">Check Eligibility</button>
+            <button class="btn btn-outline btn-lg" data-nav="jobs">Browse Jobs</button>
+          </div>
+        </div>
+        <div class="hero-visual" aria-hidden="true">
+          <div class="hero-card-stack">
+            <div class="float-card fc1">
+              <span class="fc-icon">&#10003;</span>
+              <span>Fit Score: 87</span>
+            </div>
+            <div class="float-card fc2">
+              <span class="fc-icon">&#9733;</span>
+              <span>Top Match</span>
+            </div>
+            <div class="float-card fc3">
+              <span class="fc-icon">&#8987;</span>
+              <span>No Cooldown</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="features-section">
+        <h2 class="section-title">Everything You Need</h2>
+        <p class="section-sub">Three powerful tools to navigate the job allocation process with confidence.</p>
+        <div class="feature-cards">
+          <div class="feature-card">
+            <div class="feature-icon">&#9745;</div>
+            <h3>Check Eligibility</h3>
+            <p>Instantly verify whether a student qualifies for a specific job allocation based on all active rules.</p>
+            <button class="btn btn-ghost" data-nav="eligibility">Try it &rarr;</button>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">&#128196;</div>
+            <h3>Browse Jobs</h3>
+            <p>Search available job openings and filter by title or company to find the right opportunities.</p>
+            <button class="btn btn-ghost" data-nav="jobs">View Jobs &rarr;</button>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">&#128161;</div>
+            <h3>Get Recommendations</h3>
+            <p>Receive personalized job recommendations based on your student profile and fit score.</p>
+            <button class="btn btn-ghost" data-nav="recommendations">Explore &rarr;</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="stats-bar">
+        <div class="stat-item">
+          <span class="stat-num">5</span>
+          <span class="stat-label">Max weekly allocations per student</span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-item">
+          <span class="stat-num">70+</span>
+          <span class="stat-label">Minimum fit score required</span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-item">
+          <span class="stat-num">12</span>
+          <span class="stat-label">Max allocations per job per week</span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-item">
+          <span class="stat-num">30</span>
+          <span class="stat-label">Max allocations per company per week</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== JOBS SECTION ===== -->
+    <section id="section-jobs" class="section">
+      <div class="page-header">
+        <h2 class="page-title">Job Listings</h2>
+        <p class="page-sub">Search for available jobs by entering your Student ID and fit score below.</p>
+      </div>
+
+      <div class="search-card">
+        <form id="jobs-search-form" novalidate>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="jobs-student-id">Student ID <span class="required">*</span></label>
+              <input type="text" id="jobs-student-id" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" autocomplete="off" />
+              <span class="field-error" id="jobs-student-id-error"></span>
+            </div>
+            <div class="form-group form-group-sm">
+              <label for="jobs-fit-score">Fit Score (0–100) <span class="required">*</span></label>
+              <input type="number" id="jobs-fit-score" placeholder="e.g. 85" min="0" max="100" />
+              <span class="field-error" id="jobs-fit-score-error"></span>
+            </div>
+            <div class="form-group form-group-action">
+              <label>&nbsp;</label>
+              <button type="submit" class="btn btn-primary btn-full" id="jobs-search-btn">
+                <span class="btn-text">Search Jobs</span>
+                <span class="btn-spinner hidden"></span>
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <div id="jobs-filter-bar" class="filter-bar hidden">
+        <input type="text" id="jobs-filter-input" class="filter-input" placeholder="Filter by title or company..." />
+        <span id="jobs-count" class="results-count"></span>
+      </div>
+
+      <div id="jobs-results" class="jobs-grid"></div>
+      <div id="jobs-empty" class="empty-state hidden">
+        <div class="empty-icon">&#128269;</div>
+        <p class="empty-title">No jobs found</p>
+        <p class="empty-sub">Try adjusting your fit score or check back later.</p>
+      </div>
+      <div id="jobs-error" class="error-banner hidden"></div>
+    </section>
+
+    <!-- ===== ELIGIBILITY SECTION ===== -->
+    <section id="section-eligibility" class="section">
+      <div class="page-header">
+        <h2 class="page-title">Eligibility Checker</h2>
+        <p class="page-sub">Check whether a student is eligible for a specific job allocation before submitting.</p>
+      </div>
+
+      <div class="eligibility-layout">
+        <div class="eligibility-form-card">
+          <form id="eligibility-form" novalidate>
+            <div class="form-group">
+              <label for="elig-student-id">Student ID <span class="required">*</span></label>
+              <input type="text" id="elig-student-id" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" autocomplete="off" />
+              <span class="field-error" id="elig-student-id-error"></span>
+            </div>
+            <div class="form-group">
+              <label for="elig-job-id">Job ID <span class="required">*</span></label>
+              <input type="text" id="elig-job-id" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" autocomplete="off" />
+              <span class="field-error" id="elig-job-id-error"></span>
+            </div>
+            <div class="form-group">
+              <label for="elig-company-id">Company ID <span class="required">*</span></label>
+              <input type="text" id="elig-company-id" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" autocomplete="off" />
+              <span class="field-error" id="elig-company-id-error"></span>
+            </div>
+            <div class="form-row-half">
+              <div class="form-group">
+                <label for="elig-fit-score">Fit Score (0–100) <span class="required">*</span></label>
+                <input type="number" id="elig-fit-score" placeholder="e.g. 85" min="0" max="100" />
+                <span class="field-error" id="elig-fit-score-error"></span>
+              </div>
+              <div class="form-group">
+                <label for="elig-job-status">Job Status <span class="required">*</span></label>
+                <select id="elig-job-status">
+                  <option value="OPEN">OPEN</option>
+                  <option value="REOPENED">REOPENED</option>
+                </select>
+              </div>
+            </div>
+            <button type="submit" class="btn btn-primary btn-full" id="elig-submit-btn">
+              <span class="btn-text">Check Allocation</span>
+              <span class="btn-spinner hidden"></span>
+            </button>
+          </form>
+        </div>
+
+        <div class="eligibility-result-panel" id="elig-result-panel">
+          <div class="result-placeholder">
+            <div class="result-placeholder-icon">&#128270;</div>
+            <p>Fill in the form and click <strong>Check Allocation</strong> to see the eligibility result here.</p>
+          </div>
+        </div>
+      </div>
+      <div id="elig-error" class="error-banner hidden"></div>
+    </section>
+
+    <!-- ===== RECOMMENDATIONS SECTION ===== -->
+    <section id="section-recommendations" class="section">
+      <div class="page-header">
+        <h2 class="page-title">Job Recommendations</h2>
+        <p class="page-sub">Get personalized job recommendations tailored to your profile and fit score.</p>
+      </div>
+
+      <div class="search-card">
+        <form id="rec-form" novalidate>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="rec-student-id">Student ID <span class="required">*</span></label>
+              <input type="text" id="rec-student-id" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" autocomplete="off" />
+              <span class="field-error" id="rec-student-id-error"></span>
+            </div>
+            <div class="form-group form-group-sm">
+              <label for="rec-fit-score">Fit Score (0–100) <span class="required">*</span></label>
+              <input type="number" id="rec-fit-score" placeholder="e.g. 85" min="0" max="100" />
+              <span class="field-error" id="rec-fit-score-error"></span>
+            </div>
+            <div class="form-group form-group-action">
+              <label>&nbsp;</label>
+              <button type="submit" class="btn btn-primary btn-full" id="rec-submit-btn">
+                <span class="btn-text">Get Recommendations</span>
+                <span class="btn-spinner hidden"></span>
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <div id="rec-results" class="jobs-grid"></div>
+      <div id="rec-empty" class="empty-state hidden">
+        <div class="empty-icon">&#128587;</div>
+        <p class="empty-title">No recommendations found</p>
+        <p class="empty-sub">Try a different fit score or check back later for new openings.</p>
+      </div>
+      <div id="rec-loading" class="loading-state hidden">
+        <div class="loading-spinner-lg"></div>
+        <p>Finding the best matches for you...</p>
+      </div>
+      <div id="rec-error" class="error-banner hidden"></div>
+    </section>
+
+    <!-- ===== ABOUT SECTION ===== -->
+    <section id="section-about" class="section">
+      <div class="page-header">
+        <h2 class="page-title">How It Works</h2>
+        <p class="page-sub">Our allocation system uses a set of transparent rules to determine job eligibility. Here's what each rule means in plain English.</p>
+      </div>
+
+      <div class="about-intro-card">
+        <div class="about-intro-icon">&#9881;</div>
+        <div>
+          <h3>Rule-Based Allocation Engine</h3>
+          <p>
+            Every time a student is considered for a job, the system runs through a series of checks automatically.
+            If any rule is violated, the allocation is blocked and the reason is clearly explained.
+            This ensures fairness, prevents overloading companies and jobs, and keeps the process transparent.
+          </p>
+        </div>
+      </div>
+
+      <div class="rules-grid">
+        <div class="rule-card">
+          <div class="rule-header">
+            <span class="rule-icon">&#127919;</span>
+            <div>
+              <h3 class="rule-title">Fit Score Threshold</h3>
+              <code class="rule-code">FIT_THRESHOLD</code>
+            </div>
+          </div>
+          <p class="rule-desc">
+            A student must have a fit score of <strong>70 or above</strong> to be considered for any job allocation.
+            This ensures only well-matched candidates are placed, improving outcomes for both students and employers.
+          </p>
+          <div class="rule-example">
+            <span class="example-label">Example:</span> A student with a fit score of 65 will be blocked from allocation until their score improves.
+          </div>
+        </div>
+
+        <div class="rule-card">
+          <div class="rule-header">
+            <span class="rule-icon">&#128203;</span>
+            <div>
+              <h3 class="rule-title">Job Weekly Cap</h3>
+              <code class="rule-code">JOB_CAP</code>
+            </div>
+          </div>
+          <p class="rule-desc">
+            Each job posting can receive a maximum of <strong>12 allocations per week</strong>.
+            Once a job reaches this limit, no further students can be allocated to it until the next week begins.
+          </p>
+          <div class="rule-example">
+            <span class="example-label">Example:</span> A popular job that has already received 12 applications this week will be temporarily unavailable.
+          </div>
+        </div>
+
+        <div class="rule-card">
+          <div class="rule-header">
+            <span class="rule-icon">&#127970;</span>
+            <div>
+              <h3 class="rule-title">Company Weekly Cap</h3>
+              <code class="rule-code">COMPANY_CAP</code>
+            </div>
+          </div>
+          <p class="rule-desc">
+            Each company can receive a maximum of <strong>30 total allocations per week</strong> across all their job postings.
+            This prevents any single company from being overwhelmed with applications.
+          </p>
+          <div class="rule-example">
+            <span class="example-label">Example:</span> A company with 30 allocations this week will not receive any more until next week resets.
+          </div>
+        </div>
+
+        <div class="rule-card">
+          <div class="rule-header">
+            <span class="rule-icon">&#128100;</span>
+            <div>
+              <h3 class="rule-title">Student Weekly Cap</h3>
+              <code class="rule-code">STUDENT_WEEKLY_CAP</code>
+            </div>
+          </div>
+          <p class="rule-desc">
+            Each student can be allocated to a maximum of <strong>5 jobs per week</strong>.
+            This encourages thoughtful job applications and prevents students from mass-applying without consideration.
+          </p>
+          <div class="rule-example">
+            <span class="example-label">Example:</span> A student who has already been allocated 5 jobs this week must wait until next Monday.
+          </div>
+        </div>
+
+        <div class="rule-card">
+          <div class="rule-header">
+            <span class="rule-icon">&#8987;</span>
+            <div>
+              <h3 class="rule-title">Cooldown Period</h3>
+              <code class="rule-code">COOLDOWN</code>
+            </div>
+          </div>
+          <p class="rule-desc">
+            After being allocated to or rejected from a specific job, a student must wait through a
+            <strong>cooldown period</strong> before reapplying to the same job.
+            This prevents spamming and gives other students a fair chance.
+          </p>
+          <div class="rule-example">
+            <span class="example-label">Example:</span> A student who recently applied to "Frontend Engineer at Acme" must wait before applying again.
+          </div>
+        </div>
+
+        <div class="rule-card rule-card-flow">
+          <div class="rule-header">
+            <span class="rule-icon">&#128260;</span>
+            <div>
+              <h3 class="rule-title">How Checks Are Ordered</h3>
+              <code class="rule-code">FLOW</code>
+            </div>
+          </div>
+          <p class="rule-desc">
+            Rules are checked in a specific order. The first failing rule stops the process and returns a clear reason code.
+          </p>
+          <ol class="flow-list">
+            <li>Job exists and company matches</li>
+            <li>Fit score meets the threshold (&ge; 70)</li>
+            <li>Job hasn't hit its weekly cap (12)</li>
+            <li>Company hasn't hit its weekly cap (30)</li>
+            <li>Student hasn't hit their weekly cap (5)</li>
+            <li>Student is not in a cooldown period for that job</li>
+          </ol>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="footer">
+    <div class="footer-container">
+      <div class="footer-brand">
+        <span class="brand-icon">&#9670;</span>
+        <strong>JobMatch</strong>
+      </div>
+      <p class="footer-copy">Job Allocation System &mdash; Built for fair, transparent placement.</p>
+    </div>
+  </footer>
+
+  <script src="/app.js"></script>
+</body>
+</html>

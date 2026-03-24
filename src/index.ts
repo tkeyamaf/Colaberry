@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import express, { Request, Response } from 'express';
+import path from 'path';
 import { canAllocate } from './services/allocationService';
 import { getRecommendedJobs } from './services/recommendationService';
 import { allocateJobTransaction } from './services/allocationTransactionService';
@@ -8,6 +9,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
+app.use(express.static(path.join(__dirname, '../public')));
 
 app.get('/', (_req: Request, res: Response) => {
   res.json({
