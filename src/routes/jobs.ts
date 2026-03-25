@@ -107,11 +107,12 @@ router.get('/jobs', async (req: Request, res: Response) => {
   }
 });
 
-// Diagnostic: GET /api/jobs/ping — check JSearch status
+// Diagnostic: GET /api/jobs/ping — check cache/JSearch status
 router.get('/jobs/ping', async (_req: Request, res: Response) => {
   try {
-    const jobs = await getSampleJobs('data analyst');
-    res.json({ ok: true, count: jobs.length, sample: jobs[0]?.title || null });
+    const jobs = await getCachedJobs();
+    const ageMinutes = cacheTimestamp ? Math.floor((Date.now() - cacheTimestamp) / 60000) : null;
+    res.json({ ok: true, count: jobs.length, cacheAgeMinutes: ageMinutes, sample: jobs[0]?.title || null });
   } catch (err: any) {
     res.json({ ok: false, error: err.message });
   }
