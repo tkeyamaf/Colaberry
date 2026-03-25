@@ -20,8 +20,8 @@ router.get('/jobs', async (req: Request, res: Response) => {
         j.url,
         j.status,
         j.description,
-        COALESCE(j.job_type, 'Full-time') AS "jobType",
-        COALESCE(j.fit_score_min, 70)     AS "fitScoreMin",
+        'Full-time' AS "jobType",
+        70          AS "fitScoreMin",
         j.created_at AS "createdAt"
       FROM jobs j
       LEFT JOIN companies c ON c.id = j.company_id
