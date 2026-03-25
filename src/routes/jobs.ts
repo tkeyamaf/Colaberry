@@ -52,43 +52,34 @@ router.get('/jobs', async (req: Request, res: Response) => {
 
     const result = await pool.query(query, params);
 
-    // If no jobs in DB, fall back to JSearch / sample jobs
-    if (result.rows.length === 0) {
-      const sampleJobs = await getSampleJobs(typeof search === 'string' && search.trim() ? search.trim() : 'software engineer');
-
-      // Apply filters to sample jobs
-      let filtered = sampleJobs;
-
-      if (search && typeof search === 'string' && search.trim()) {
-        const q = search.trim().toLowerCase();
-        filtered = filtered.filter(
-          j => j.title.toLowerCase().includes(q) || j.company.toLowerCase().includes(q)
-        );
-      }
-
-      if (status && typeof status === 'string' && status.trim()) {
-        const s = status.trim().toUpperCase();
-        filtered = filtered.filter(j => j.status === s);
-      }
-
-      if (location && typeof location === 'string' && location.trim()) {
-        const l = location.trim().toLowerCase();
-        filtered = filtered.filter(j => j.location.toLowerCase().includes(l));
-      }
-
-      res.json(filtered);
+    // If DB has jobs, return them — otherwise call JSearch for real jobs only
+    if (result.rows.length > 0) {
+      res.json(result.rows);
       return;
     }
 
-    res.json(result.rows);
+    // No DB jobs — fetch real jobs from JSearch only (no sample fallback)
+    const query2 = typeof search === 'string' && search.trim() ? search.trim() : 'software engineer';
+    const realJobs = await getSampleJobs(query2);
+
+    // Apply filters
+    let filtered = realJobs;
+
+    if (search && typeof search === 'string' && search.trim()) {
+      const q = search.trim().toLowerCase();
+      filtered = filtered.filter(j => j.title.toLowerCase().includes(q) || j.company.toLowerCase().includes(q));
+    }
+    if (status && typeof status === 'string' && status.trim()) {
+      filtered = filtered.filter(j => j.status === status.trim().toUpperCase());
+    }
+    if (location && typeof location === 'string' && location.trim()) {
+      filtered = filtered.filter(j => j.location.toLowerCase().includes(location.trim().toLowerCase()));
+    }
+
+    res.json(filtered);
   } catch (err) {
     console.error('Error fetching jobs:', err);
-    // Never crash — return sample jobs as fallback
-    try {
-      res.json(await getSampleJobs());
-    } catch {
-      res.json([]);
-    }
+    res.json([]);
   }
 });
 
