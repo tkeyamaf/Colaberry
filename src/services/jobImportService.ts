@@ -28,7 +28,7 @@ function fetchJSearchJobs(query: string): Promise<SampleJob[]> {
     const options = {
       method: 'GET',
       hostname: 'jsearch.p.rapidapi.com',
-      path: `/search?query=${encodeURIComponent(query)}&page=1&num_pages=1`,
+      path: `/search?query=${encodeURIComponent(query)}&page=1&num_pages=3`,
       headers: {
         'X-RapidAPI-Key': process.env.RAPIDAPI_KEY,
         'X-RapidAPI-Host': 'jsearch.p.rapidapi.com',
@@ -41,7 +41,7 @@ function fetchJSearchJobs(query: string): Promise<SampleJob[]> {
       res.on('end', () => {
         try {
           const parsed = JSON.parse(data);
-          const jobs: SampleJob[] = (parsed.data || []).slice(0, 12).map((job: any) => ({
+          const jobs: SampleJob[] = (parsed.data || []).map((job: any) => ({
             id: job.job_id || crypto.randomUUID(),
             title: job.job_title || 'Untitled',
             company: job.employer_name || 'Unknown Company',
