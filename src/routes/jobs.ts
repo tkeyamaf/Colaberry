@@ -96,8 +96,15 @@ router.get('/jobs', async (req: Request, res: Response) => {
       filtered = filtered.filter(j => j.status === status.trim().toUpperCase());
     }
     if (location && typeof location === 'string' && location.trim()) {
-      const loc = location.trim().toLowerCase();
-      filtered = filtered.filter(j => (j.location || '').toLowerCase().includes(loc));
+      const loc = location.trim();
+      filtered = filtered.filter(j => {
+        const jobLoc = j.location || '';
+        if (loc.toLowerCase() === 'remote') {
+          return jobLoc.toLowerCase().includes('remote');
+        }
+        // Match ", AL" pattern so "AL" doesn't hit "Dallas" or "Philadelphia"
+        return jobLoc.includes(`, ${loc.toUpperCase()}`);
+      });
     }
 
     res.json(filtered);
