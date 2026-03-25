@@ -226,35 +226,77 @@
     <!-- ===== JOBS SECTION ===== -->
     <section id="section-jobs" class="section">
       <div class="section-inner">
+
         <div class="page-header">
           <h1 class="page-title">Browse Jobs</h1>
-          <p class="page-sub">Explore open positions and find your perfect match</p>
+          <p class="page-sub">Real job listings from LinkedIn, Indeed, Glassdoor, and more — updated live. Search, save, and apply directly on company sites.</p>
         </div>
 
-        <!-- Search & Filters -->
-        <div class="jobs-search-bar">
-          <div class="search-input-wrap">
-            <svg class="search-icon" width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="7.5" cy="7.5" r="5.5" stroke="#718096" stroke-width="1.5"/><path d="M12 12l4 4" stroke="#718096" stroke-width="1.5" stroke-linecap="round"/></svg>
-            <input type="text" id="jobs-search" class="search-input" placeholder="Search job title or company…" autocomplete="off" />
+        <!-- Onboarding strip for guests -->
+        <div id="jobs-onboarding-strip" class="jobs-onboarding-strip">
+          <div class="onboarding-steps">
+            <div class="onboarding-step"><span class="onboarding-num">1</span><span>Complete your profile</span></div>
+            <div class="onboarding-arrow">→</div>
+            <div class="onboarding-step"><span class="onboarding-num">2</span><span>Browse jobs</span></div>
+            <div class="onboarding-arrow">→</div>
+            <div class="onboarding-step"><span class="onboarding-num">3</span><span>Check eligibility</span></div>
+            <div class="onboarding-arrow">→</div>
+            <div class="onboarding-step"><span class="onboarding-num">4</span><span>Apply with confidence</span></div>
           </div>
-          <select id="jobs-status-filter" class="filter-select">
-            <option value="">All Statuses</option>
-            <option value="OPEN">Open</option>
-            <option value="REOPENED">Reopened</option>
-            <option value="CLOSED">Closed</option>
-          </select>
-          <input type="text" id="jobs-location-filter" class="filter-input" placeholder="Filter by location…" />
-          <button class="btn btn-primary" id="jobs-search-btn">Search</button>
+          <p class="onboarding-hint">Create a free account to unlock personalized job matches and eligibility checks.</p>
+          <button class="btn btn-primary btn-sm" id="jobs-onboarding-signup-btn">Sign Up Free →</button>
         </div>
 
         <!-- Logged-in fit score badge -->
         <div id="jobs-fit-badge" style="display:none" class="fit-badge-bar">
-          <span>Your Fit Score: </span><strong id="jobs-fit-score-val">—</strong>
+          <span>Your Fit Score: <strong id="jobs-fit-score-val">—</strong></span>
+          <span class="fit-badge-hint">Jobs where you meet the minimum score are great matches.</span>
+        </div>
+
+        <!-- Search & Filters -->
+        <div class="jobs-search-bar">
+          <div class="search-input-wrap search-input-wrap--full">
+            <svg class="search-icon" width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="7.5" cy="7.5" r="5.5" stroke="#718096" stroke-width="1.5"/><path d="M12 12l4 4" stroke="#718096" stroke-width="1.5" stroke-linecap="round"/></svg>
+            <input type="text" id="jobs-search" class="search-input" placeholder="Search job title, company, or keyword…" autocomplete="off" />
+          </div>
+          <div class="jobs-filters-row">
+            <input type="text" id="jobs-location-filter" class="filter-input" placeholder="Location…" />
+            <select id="jobs-type-filter" class="filter-select">
+              <option value="">All Job Types</option>
+              <option value="full-time">Full-time</option>
+              <option value="part-time">Part-time</option>
+              <option value="contract">Contract</option>
+              <option value="internship">Internship</option>
+            </select>
+            <select id="jobs-status-filter" class="filter-select">
+              <option value="">All Statuses</option>
+              <option value="OPEN">Open</option>
+              <option value="REOPENED">Reopened</option>
+              <option value="CLOSED">Closed</option>
+            </select>
+            <select id="jobs-sort" class="filter-select">
+              <option value="newest">Newest First</option>
+              <option value="remote">Remote First</option>
+            </select>
+          </div>
+          <div class="jobs-search-actions">
+            <button class="btn btn-primary" id="jobs-search-btn">Search</button>
+            <button class="btn btn-ghost btn-sm" id="jobs-reset-btn">Reset</button>
+          </div>
+        </div>
+
+        <!-- Trust bar -->
+        <div class="jobs-trust-bar">
+          <span>✅ Transparent eligibility checks</span>
+          <span>💾 Save jobs and apply later</span>
+          <span>🔗 Apply directly on company sites</span>
         </div>
 
         <!-- Jobs grid -->
         <div id="jobs-grid" class="jobs-grid">
-          <!-- Skeleton cards shown while loading -->
+          <div class="job-card skeleton-card"><div class="skel skel-h"></div><div class="skel skel-m"></div><div class="skel skel-s"></div></div>
+          <div class="job-card skeleton-card"><div class="skel skel-h"></div><div class="skel skel-m"></div><div class="skel skel-s"></div></div>
+          <div class="job-card skeleton-card"><div class="skel skel-h"></div><div class="skel skel-m"></div><div class="skel skel-s"></div></div>
           <div class="job-card skeleton-card"><div class="skel skel-h"></div><div class="skel skel-m"></div><div class="skel skel-s"></div></div>
           <div class="job-card skeleton-card"><div class="skel skel-h"></div><div class="skel skel-m"></div><div class="skel skel-s"></div></div>
           <div class="job-card skeleton-card"><div class="skel skel-h"></div><div class="skel skel-m"></div><div class="skel skel-s"></div></div>
@@ -262,8 +304,12 @@
 
         <div id="jobs-empty" class="empty-state" style="display:none">
           <div class="empty-icon">🔍</div>
-          <h3>No jobs found</h3>
-          <p>Try adjusting your search or filters.</p>
+          <h3>No jobs match your search</h3>
+          <p>Try adjusting your filters or broadening your keywords.</p>
+          <div class="empty-actions">
+            <button class="btn btn-primary" id="jobs-reset-empty-btn">Reset Filters</button>
+            <button class="btn btn-outline" id="jobs-browse-all-btn">Browse All Jobs</button>
+          </div>
         </div>
         <div id="jobs-error" class="error-state" style="display:none">
           <div class="empty-icon">⚠️</div>
@@ -271,6 +317,7 @@
           <p>Please check your connection and try again.</p>
           <button class="btn btn-primary" id="jobs-retry-btn">Retry</button>
         </div>
+
       </div>
     </section><!-- /jobs -->
 

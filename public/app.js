@@ -261,7 +261,7 @@ function logout() {
 // ---------------------------------------------------------------------------
 // Jobs: Load & Render
 // ---------------------------------------------------------------------------
-async function loadJobs(query = '', statusFilter = '', locationFilter = '') {
+async function loadJobs(query = '', statusFilter = '', locationFilter = '', typeFilter = '', sort = 'newest') {
   const grid  = document.getElementById('jobs-grid');
   const empty = document.getElementById('jobs-empty');
   const error = document.getElementById('jobs-error');
@@ -280,6 +280,10 @@ async function loadJobs(query = '', statusFilter = '', locationFilter = '') {
   if (error) error.style.display = 'none';
   grid.style.display = 'grid';
 
+  // Hide onboarding strip for logged-in users
+  const onboardingStrip = document.getElementById('jobs-onboarding-strip');
+  if (onboardingStrip) onboardingStrip.style.display = state.currentUser ? 'none' : '';
+
   const params = new URLSearchParams();
   if (query)          params.set('search',   query);
   if (statusFilter)   params.set('status',   statusFilter);
@@ -290,10 +294,24 @@ async function loadJobs(query = '', statusFilter = '', locationFilter = '') {
     if (!res.ok) throw new Error('Failed to fetch jobs');
 
     const raw = await res.json();
-    const jobs = Array.isArray(raw) ? raw : (raw.jobs || raw.data || []);
+    let jobs = Array.isArray(raw) ? raw : (raw.jobs || raw.data || []);
+
+    // Client-side type filter (JSearch returns jobType field)
+    if (typeFilter) {
+      jobs = jobs.filter(j => (j.jobType || '').toLowerCase().includes(typeFilter.toLowerCase()));
+    }
+
+    // Client-side sort
+    if (sort === 'remote') {
+      jobs = [...jobs].sort((a, b) => {
+        const aR = (a.location || '').toLowerCase().includes('remote') ? -1 : 1;
+        const bR = (b.location || '').toLowerCase().includes('remote') ? -1 : 1;
+        return aR - bR;
+      });
+    }
+
     state.jobs = jobs;
 
-    // Also load saved jobs if logged in
     if (state.currentUser) {
       await refreshSavedJobIds();
     }
@@ -303,6 +321,7 @@ async function loadJobs(query = '', statusFilter = '', locationFilter = '') {
       grid.style.display = 'none';
       if (empty) empty.style.display = 'block';
     } else {
+      grid.style.display = 'grid';
       grid.innerHTML = jobs.map(job => renderJobCard(job, { showSave: true, showApply: true })).join('');
     }
 
@@ -310,7 +329,7 @@ async function loadJobs(query = '', statusFilter = '', locationFilter = '') {
     const fitBadge = document.getElementById('jobs-fit-badge');
     const fitVal   = document.getElementById('jobs-fit-score-val');
     if (fitBadge && fitVal && state.currentUser) {
-      fitBadge.style.display = 'inline-block';
+      fitBadge.style.display = 'flex';
       fitVal.textContent = state.currentUser.fitScore ?? '—';
     }
   } catch (err) {
@@ -336,6 +355,8 @@ function renderJobCard(job, options = {}) {
   const statusClass = status === 'OPEN' ? 'open' : status === 'REOPENED' ? 'reopened' : 'closed';
   const fitMin = job.fitScoreMin ?? job.fit_score_min ?? 70;
   const isSaved = state.savedJobIds.has(job.id || job.job_id);
+  const jobUrl = job.url || job.jobUrl || '';
+  const isRemote = (job.location || '').toLowerCase().includes('remote');
 
   const saveBtn = showSave
     ? `<button class="btn-save ${isSaved ? 'saved' : ''}" data-job-id="${escHtml(job.id)}" onclick="toggleSaveJob(this)"
@@ -344,39 +365,73 @@ function renderJobCard(job, options = {}) {
        </button>`
     : '';
 
-  const applyBtn = showApply
-    ? `<button class="btn btn-primary btn-sm" onclick="applyToJobById('${escHtml(job.id)}')">Apply Now</button>`
+  const viewJobBtn = jobUrl
+    ? `<a class="btn btn-primary btn-sm btn-apply-link" href="${escHtml(jobUrl)}" target="_blank" rel="noopener noreferrer">Apply Now ↗</a>`
+    : `<button class="btn btn-sm btn-apply-disabled" disabled>Apply Link Coming Soon</button>`;
+
+  const eligBtn = `<button class="btn btn-outline btn-sm" onclick="goCheckEligibility('${escHtml(job.id || job.job_id)}')">Check Eligibility</button>`;
+
+  const expressBtn = showApply
+    ? `<button class="btn btn-ghost btn-sm" onclick="applyToJobById('${escHtml(job.id)}')">Express Interest</button>`
     : '';
 
   const removeBtn = showRemove
     ? `<button class="btn btn-outline btn-sm" onclick="removeSavedJob('${escHtml(job.job_id || job.id)}', this)">Remove</button>`
     : '';
 
+  const postedDate = job.createdAt ? formatDate(job.createdAt) : null;
+
   return `
     <div class="job-card" data-job-id="${escHtml(job.id || job.job_id)}">
       <div class="job-card-top">
-        <div>
+        <div class="job-card-title-wrap">
           <div class="job-title">${escHtml(job.title || job.job_title)}</div>
+          <div class="job-company">${escHtml(job.company)}</div>
         </div>
         <span class="status-badge status-badge--${statusClass}">${escHtml(status)}</span>
       </div>
       <div class="job-meta">
-        <div class="job-company">${escHtml(job.company)}</div>
         <div class="job-location">📍 ${escHtml(job.location || 'Location not specified')}</div>
+        ${postedDate ? `<div class="job-posted">🗓 ${escHtml(postedDate)}</div>` : ''}
       </div>
-      ${job.jobType ? `<span class="job-type-badge">${escHtml(job.jobType)}</span>` : ''}
-      <p class="job-desc">${escHtml((job.description || '').slice(0, 150) + ((job.description || '').length > 150 ? '…' : ''))}</p>
+      <div class="job-tags">
+        ${job.jobType ? `<span class="job-type-badge">${escHtml(job.jobType)}</span>` : ''}
+        ${isRemote ? `<span class="job-type-badge job-type-badge--remote">Remote</span>` : ''}
+      </div>
+      <p class="job-desc">${escHtml((job.description || '').slice(0, 160) + ((job.description || '').length > 160 ? '…' : ''))}</p>
       <div class="job-fit-bar-wrap">
         <div class="job-fit-label">Min fit score: ${escHtml(String(fitMin))}</div>
         <div class="job-fit-bar"><div class="job-fit-fill" style="width:${fitMin}%"></div></div>
       </div>
       <div class="job-actions">
-        ${saveBtn}
-        ${applyBtn}
-        ${removeBtn}
+        <div class="job-actions-primary">
+          ${viewJobBtn}
+          ${eligBtn}
+        </div>
+        <div class="job-actions-secondary">
+          ${saveBtn}
+          ${expressBtn}
+          ${removeBtn}
+        </div>
       </div>
     </div>
   `;
+}
+
+function goCheckEligibility(jobId) {
+  showSection('eligibility');
+  // Pre-select the job in the eligibility dropdown
+  setTimeout(() => {
+    const sel = document.getElementById('elig-job-select');
+    if (sel && jobId) {
+      sel.value = jobId;
+      sel.dispatchEvent(new Event('change'));
+    }
+    if (state.currentUser) {
+      const sidInput = document.getElementById('elig-student-id');
+      if (sidInput && !sidInput.value) sidInput.value = state.currentUser.studentId || '';
+    }
+  }, 100);
 }
 
 // ---------------------------------------------------------------------------
@@ -1290,16 +1345,34 @@ function setupEventListeners() {
   document.getElementById('btn-profile-gate-signup')?.addEventListener('click', () => openModal('signup-modal'));
 
   // Jobs search
-  document.getElementById('jobs-search-btn')?.addEventListener('click', () => {
-    const q   = document.getElementById('jobs-search')?.value.trim()          || '';
-    const s   = document.getElementById('jobs-status-filter')?.value           || '';
-    const loc = document.getElementById('jobs-location-filter')?.value.trim() || '';
-    loadJobs(q, s, loc);
-  });
+  function runJobSearch() {
+    const q    = document.getElementById('jobs-search')?.value.trim()           || '';
+    const s    = document.getElementById('jobs-status-filter')?.value            || '';
+    const loc  = document.getElementById('jobs-location-filter')?.value.trim()  || '';
+    const type = document.getElementById('jobs-type-filter')?.value              || '';
+    const sort = document.getElementById('jobs-sort')?.value                     || 'newest';
+    loadJobs(q, s, loc, type, sort);
+  }
+
+  function resetJobFilters() {
+    const ids = ['jobs-search', 'jobs-location-filter'];
+    ids.forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    ['jobs-status-filter', 'jobs-type-filter', 'jobs-sort'].forEach(id => {
+      const el = document.getElementById(id); if (el) el.selectedIndex = 0;
+    });
+    jobsLoaded = false;
+    loadJobs();
+  }
+
+  document.getElementById('jobs-search-btn')?.addEventListener('click', runJobSearch);
   document.getElementById('jobs-search')?.addEventListener('keydown', e => {
-    if (e.key === 'Enter') document.getElementById('jobs-search-btn')?.click();
+    if (e.key === 'Enter') runJobSearch();
   });
+  document.getElementById('jobs-reset-btn')?.addEventListener('click', resetJobFilters);
+  document.getElementById('jobs-reset-empty-btn')?.addEventListener('click', resetJobFilters);
+  document.getElementById('jobs-browse-all-btn')?.addEventListener('click', resetJobFilters);
   document.getElementById('jobs-retry-btn')?.addEventListener('click', () => loadJobs());
+  document.getElementById('jobs-onboarding-signup-btn')?.addEventListener('click', () => openModal('signup-modal'));
 
   // Eligibility checker
   document.getElementById('elig-check-btn')?.addEventListener('click', checkEligibility);
