@@ -102,6 +102,8 @@ function showToast(message, type = 'success') {
 // Navigation / Section Management
 // ---------------------------------------------------------------------------
 let jobsLoaded = false;
+let jobsCurrentPage = 1;
+const JOBS_PER_PAGE = 12;
 
 function showSection(name) {
   if (!SECTIONS.includes(name)) name = 'home';
@@ -317,12 +319,13 @@ async function loadJobs(query = '', statusFilter = '', locationFilter = '', type
     }
 
     jobsLoaded = true;
+    jobsCurrentPage = 1;
+
     if (jobs.length === 0) {
       grid.style.display = 'none';
       if (empty) empty.style.display = 'block';
     } else {
-      grid.style.display = 'grid';
-      grid.innerHTML = jobs.map(job => renderJobCard(job, { showSave: true, showApply: true })).join('');
+      renderJobsPage();
     }
 
     // Show fit score badge if logged in
@@ -337,6 +340,64 @@ async function loadJobs(query = '', statusFilter = '', locationFilter = '', type
     grid.style.display = 'none';
     if (error) error.style.display = 'block';
   }
+}
+
+function renderJobsPage() {
+  const grid  = document.getElementById('jobs-grid');
+  const empty = document.getElementById('jobs-empty');
+  if (!grid) return;
+
+  const jobs = state.jobs;
+  const totalPages = Math.ceil(jobs.length / JOBS_PER_PAGE);
+  const start = (jobsCurrentPage - 1) * JOBS_PER_PAGE;
+  const pageJobs = jobs.slice(start, start + JOBS_PER_PAGE);
+
+  if (empty) empty.style.display = 'none';
+  grid.style.display = 'grid';
+  grid.innerHTML = pageJobs.map(job => renderJobCard(job, { showSave: true, showApply: true })).join('');
+
+  // Render pagination controls
+  let pager = document.getElementById('jobs-pagination');
+  if (!pager) {
+    pager = document.createElement('div');
+    pager.id = 'jobs-pagination';
+    pager.className = 'jobs-pagination';
+    grid.parentNode.insertBefore(pager, grid.nextSibling);
+  }
+
+  if (totalPages <= 1) {
+    pager.innerHTML = '';
+    return;
+  }
+
+  const pages = [];
+  for (let i = 1; i <= totalPages; i++) {
+    if (i === 1 || i === totalPages || Math.abs(i - jobsCurrentPage) <= 2) {
+      pages.push(i);
+    } else if (pages[pages.length - 1] !== '…') {
+      pages.push('…');
+    }
+  }
+
+  pager.innerHTML = `
+    <button class="page-btn" onclick="goToJobsPage(${jobsCurrentPage - 1})" ${jobsCurrentPage === 1 ? 'disabled' : ''}>← Prev</button>
+    ${pages.map(p => p === '…'
+      ? `<span class="page-ellipsis">…</span>`
+      : `<button class="page-btn ${p === jobsCurrentPage ? 'page-btn--active' : ''}" onclick="goToJobsPage(${p})">${p}</button>`
+    ).join('')}
+    <button class="page-btn" onclick="goToJobsPage(${jobsCurrentPage + 1})" ${jobsCurrentPage === totalPages ? 'disabled' : ''}>Next →</button>
+    <span class="page-info">Page ${jobsCurrentPage} of ${totalPages} · ${jobs.length} jobs</span>
+  `;
+
+  // Scroll to top of jobs section smoothly
+  document.getElementById('section-jobs')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function goToJobsPage(page) {
+  const totalPages = Math.ceil(state.jobs.length / JOBS_PER_PAGE);
+  if (page < 1 || page > totalPages) return;
+  jobsCurrentPage = page;
+  renderJobsPage();
 }
 
 async function refreshSavedJobIds() {
