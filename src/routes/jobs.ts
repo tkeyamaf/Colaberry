@@ -77,18 +77,15 @@ router.get('/jobs', async (req: Request, res: Response) => {
       realJobs = results.flat();
     }
 
-    // Apply filters
+    // Apply filters (search is already handled by JSearch query, only filter status/location)
     let filtered = realJobs;
 
-    if (search && typeof search === 'string' && search.trim()) {
-      const q = search.trim().toLowerCase();
-      filtered = filtered.filter(j => j.title.toLowerCase().includes(q) || j.company.toLowerCase().includes(q));
-    }
     if (status && typeof status === 'string' && status.trim()) {
       filtered = filtered.filter(j => j.status === status.trim().toUpperCase());
     }
     if (location && typeof location === 'string' && location.trim()) {
-      filtered = filtered.filter(j => j.location.toLowerCase().includes(location.trim().toLowerCase()));
+      const loc = location.trim().toLowerCase();
+      filtered = filtered.filter(j => (j.location || '').toLowerCase().includes(loc));
     }
 
     res.json(filtered);

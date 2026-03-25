@@ -298,9 +298,13 @@ async function loadJobs(query = '', statusFilter = '', locationFilter = '', type
     const raw = await res.json();
     let jobs = Array.isArray(raw) ? raw : (raw.jobs || raw.data || []);
 
-    // Client-side type filter (JSearch returns jobType field)
+    // Client-side type filter — JSearch returns FULLTIME/PARTTIME/CONTRACTOR/INTERN
     if (typeFilter) {
-      jobs = jobs.filter(j => (j.jobType || '').toLowerCase().includes(typeFilter.toLowerCase()));
+      jobs = jobs.filter(j => {
+        const t = (j.jobType || '').toUpperCase().replace(/[-_\s]/g, '');
+        const f = typeFilter.toUpperCase().replace(/[-_\s]/g, '');
+        return t.includes(f) || f.includes(t);
+      });
     }
 
     // Client-side sort
@@ -1409,7 +1413,7 @@ function setupEventListeners() {
   function runJobSearch() {
     const q    = document.getElementById('jobs-search')?.value.trim()           || '';
     const s    = document.getElementById('jobs-status-filter')?.value            || '';
-    const loc  = document.getElementById('jobs-location-filter')?.value.trim()  || '';
+    const loc  = document.getElementById('jobs-location-filter')?.value          || '';
     const type = document.getElementById('jobs-type-filter')?.value              || '';
     const sort = document.getElementById('jobs-sort')?.value                     || 'newest';
     loadJobs(q, s, loc, type, sort);
