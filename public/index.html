@@ -499,6 +499,27 @@
 
         <!-- Profile form (shown when logged in) -->
         <form id="profile-form" style="display:none" novalidate>
+          <!-- Resume Upload & Parse — shown first so it auto-fills everything below -->
+          <div class="form-section">
+            <h2 class="form-section-title">Upload Resume to Auto-Fill Your Profile</h2>
+            <p class="form-hint" style="margin-bottom:12px">Drop or paste your resume and click <strong>Parse with AI</strong> — we'll fill in your skills, job titles, and summary automatically.</p>
+            <div class="resume-drop-zone" id="resume-drop-zone">
+              <svg width="48" height="48" viewBox="0 0 48 48" fill="none"><path d="M24 32V16M24 16l-6 6M24 16l6 6" stroke="#2d8a4e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><rect x="8" y="8" width="32" height="32" rx="6" stroke="#2d8a4e" stroke-width="1.5" stroke-dasharray="4 2"/></svg>
+              <p>Drag &amp; drop a <strong>.txt</strong> resume here, or <label for="resume-file" class="file-link">browse</label></p>
+              <p class="form-hint">Plain text (.txt) files are read automatically — or paste below</p>
+              <input type="file" id="resume-file" accept=".txt" style="display:none" />
+            </div>
+            <div id="resume-file-name" class="resume-file-name" style="display:none"></div>
+            <div class="form-group" style="margin-top:12px">
+              <label class="form-label" for="resume-paste">Paste Resume Text</label>
+              <textarea id="resume-paste" class="form-textarea" rows="8" placeholder="Paste the text content of your resume here, then click Parse with AI to auto-fill your profile fields…"></textarea>
+            </div>
+            <div style="margin-top:8px">
+              <button type="button" class="btn btn-outline" id="resume-parse-btn">Parse with AI</button>
+              <span id="resume-parse-status" style="margin-left:12px; font-size:0.875rem; color:var(--text-light)"></span>
+            </div>
+          </div>
+
           <!-- Personal Info -->
           <div class="form-section">
             <h2 class="form-section-title">Personal Information</h2>
@@ -669,26 +690,6 @@
             <div class="form-group">
               <label class="form-label" for="p-summary">Professional Summary</label>
               <textarea id="p-summary" name="summary" class="form-textarea" rows="5" placeholder="Tell employers what makes you great…"></textarea>
-            </div>
-          </div>
-
-          <!-- Resume Upload & Parse -->
-          <div class="form-section">
-            <h2 class="form-section-title">Resume</h2>
-            <div class="resume-drop-zone" id="resume-drop-zone">
-              <svg width="48" height="48" viewBox="0 0 48 48" fill="none"><path d="M24 32V16M24 16l-6 6M24 16l6 6" stroke="#2d8a4e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><rect x="8" y="8" width="32" height="32" rx="6" stroke="#2d8a4e" stroke-width="1.5" stroke-dasharray="4 2"/></svg>
-              <p>Drag &amp; drop a <strong>.txt</strong> resume here, or <label for="resume-file" class="file-link">browse</label></p>
-              <p class="form-hint">Plain text (.txt) files are read automatically — or paste below</p>
-              <input type="file" id="resume-file" accept=".txt" style="display:none" />
-            </div>
-            <div id="resume-file-name" class="resume-file-name" style="display:none"></div>
-            <div class="form-group" style="margin-top:12px">
-              <label class="form-label" for="resume-paste">Paste Resume Text</label>
-              <textarea id="resume-paste" class="form-textarea" rows="8" placeholder="Paste the text content of your resume here, then click Parse with AI to auto-fill your profile fields…"></textarea>
-            </div>
-            <div style="margin-top:8px">
-              <button type="button" class="btn btn-outline" id="resume-parse-btn">Parse with AI</button>
-              <span id="resume-parse-status" style="margin-left:12px; font-size:0.875rem; color:var(--text-light)"></span>
             </div>
           </div>
 
