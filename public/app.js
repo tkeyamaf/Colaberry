@@ -873,19 +873,37 @@ function setupResumeDropZone() {
   const fileLabel= document.getElementById('resume-file-name');
   if (!zone || !fileInput) return;
 
-  function handleFile(file) {
+  async function handleFile(file) {
     if (!file) return;
     showResumeFile(file, fileLabel);
-    if (file.type === 'text/plain' || file.name.endsWith('.txt')) {
+    const name = file.name.toLowerCase();
+    if (file.type === 'text/plain' || name.endsWith('.txt')) {
       const reader = new FileReader();
       reader.onload = e => {
         const pasteEl = document.getElementById('resume-paste');
         if (pasteEl) pasteEl.value = e.target.result || '';
-        showToast('Resume text loaded — click "Parse with AI" to prefill your profile.', 'info');
+        showToast('Resume loaded — click "Parse with AI" to prefill your profile.', 'info');
       };
       reader.readAsText(file);
+    } else if (name.endsWith('.pdf') || name.endsWith('.docx') || name.endsWith('.doc')) {
+      const statusEl = document.getElementById('resume-parse-status');
+      if (statusEl) statusEl.textContent = 'Reading file…';
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+        const res = await fetch(`${API_BASE}/api/ai/resume-extract`, { method: 'POST', body: formData });
+        const data = await res.json();
+        if (!res.ok) { showToast(data.error || 'Could not read file.', 'error'); if (statusEl) statusEl.textContent = ''; return; }
+        const pasteEl = document.getElementById('resume-paste');
+        if (pasteEl) pasteEl.value = data.text || '';
+        if (statusEl) statusEl.textContent = '';
+        showToast('Resume loaded — click "Parse with AI" to prefill your profile.', 'info');
+      } catch {
+        showToast('Failed to read file. Try pasting your resume text instead.', 'error');
+        if (statusEl) statusEl.textContent = '';
+      }
     } else {
-      showToast('Non-text file selected. Please paste your resume text below.', 'info');
+      showToast('Unsupported file type. Please upload a PDF, DOCX, DOC, or TXT file.', 'error');
     }
   }
 

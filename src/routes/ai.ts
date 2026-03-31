@@ -1,5 +1,11 @@
 import { Router, Request, Response } from 'express';
 import Anthropic from '@anthropic-ai/sdk';
+import multer from 'multer';
+import * as pdfParseModule from 'pdf-parse';
+const pdfParse: (buffer: Buffer) => Promise<{ text: string }> = (pdfParseModule as any).default ?? pdfParseModule;
+import mammoth from 'mammoth';
+
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
 
 const router = Router();
 
@@ -35,6 +41,51 @@ router.post('/ai/resume', async (req: Request, res: Response) => {
   } catch (err: any) {
     console.error('AI resume generation error:', err);
     res.status(500).json({ error: 'Failed to generate resume. Please try again.' });
+  }
+});
+
+// POST /api/ai/resume-extract — accept uploaded PDF/DOCX/TXT, return plain text
+router.post('/ai/resume-extract', upload.single('file'), async (req: Request, res: Response) => {
+  const file = (req as any).file;
+  if (!file) {
+    res.status(400).json({ error: 'No file uploaded.' });
+    return;
+  }
+
+  try {
+    let text = '';
+    const mime = file.mimetype;
+    const name = (file.originalname || '').toLowerCase();
+
+    if (mime === 'text/plain' || name.endsWith('.txt')) {
+      text = file.buffer.toString('utf8');
+    } else if (mime === 'application/pdf' || name.endsWith('.pdf')) {
+      const result = await pdfParse(file.buffer);
+      text = result.text;
+    } else if (
+      mime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+      name.endsWith('.docx')
+    ) {
+      const result = await mammoth.extractRawText({ buffer: file.buffer });
+      text = result.value;
+    } else if (name.endsWith('.doc')) {
+      // Older .doc format — attempt mammoth, may be partial
+      const result = await mammoth.extractRawText({ buffer: file.buffer });
+      text = result.value;
+    } else {
+      res.status(400).json({ error: 'Unsupported file type. Please upload a PDF, DOCX, DOC, or TXT file.' });
+      return;
+    }
+
+    if (!text || text.trim().length < 20) {
+      res.status(422).json({ error: 'Could not extract readable text from the file. Try pasting the text instead.' });
+      return;
+    }
+
+    res.json({ text: text.slice(0, 8000) });
+  } catch (err: any) {
+    console.error('Resume extract error:', err);
+    res.status(500).json({ error: 'Failed to read the file. Try pasting the text instead.' });
   }
 });
 
