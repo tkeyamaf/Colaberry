@@ -68,7 +68,7 @@ const REASON_MESSAGES = {
   COMPANY_MISMATCH:   "The Company ID doesn't match this job's employer. Please double-check both IDs.",
 };
 
-const SECTIONS = ['home', 'jobs', 'eligibility', 'recommendations', 'profile', 'dashboard', 'about'];
+const SECTIONS = ['home', 'jobs', 'recommendations', 'profile', 'dashboard', 'about'];
 
 // ---------------------------------------------------------------------------
 // Application State
