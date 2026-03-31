@@ -1,6 +1,16 @@
 import { Router, Request, Response } from 'express';
+import jwt from 'jsonwebtoken';
 import pool from '../config/database';
 import { getSampleJobs, SampleJob } from '../services/jobImportService';
+import {
+  computeFitScore,
+  computeGapAnalysis,
+  FIT_SCORE_THRESHOLD,
+  hasProfileData,
+  splitField,
+} from '../services/fitScoringService';
+
+const JWT_SECRET = process.env.JWT_SECRET || 'careerbridge-secret-2026';
 
 const router = Router();
 
@@ -137,6 +147,108 @@ router.get('/jobs', async (req: Request, res: Response) => {
   } catch (err) {
     console.error('Error fetching jobs:', err);
     res.json([]);
+  }
+});
+
+// GET /api/jobs/recommended — deterministic fit-scored recommendations for the
+// authenticated user.  Only jobs that score >= FIT_SCORE_THRESHOLD are returned.
+router.get('/jobs/recommended', async (req: Request, res: Response) => {
+  // ── Auth: extract user from JWT ──────────────────────────────────────────
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ')) {
+    res.status(401).json({ error: 'Not authenticated' });
+    return;
+  }
+
+  let userId: string;
+  try {
+    const decoded = jwt.verify(authHeader.split(' ')[1], JWT_SECRET) as { userId: string };
+    userId = decoded.userId;
+  } catch {
+    res.status(401).json({ error: 'Invalid or expired token' });
+    return;
+  }
+
+  try {
+    // ── Load user profile from users table ──────────────────────────────────
+    const userRes = await pool.query(
+      'SELECT skills, target_job_titles, job_types FROM users WHERE id = $1',
+      [userId]
+    );
+    if (userRes.rows.length === 0) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+
+    const row = userRes.rows[0];
+    const profile = {
+      skills:           splitField(row.skills),
+      targetJobTitles:  splitField(row.target_job_titles),
+      jobTypes:         row.job_types || '',
+    };
+
+    // ── Guard: prompt profile completion when no scoreable data ─────────────
+    if (!hasProfileData(profile)) {
+      res.json({ noProfile: true, jobs: [] });
+      return;
+    }
+
+    // ── Fetch live jobs from cache ───────────────────────────────────────────
+    // Use target titles to build a relevant JSearch query when available;
+    // fall back to the default two-query feed so the cache stays warm.
+    let allJobs: SampleJob[];
+    if (profile.targetJobTitles.length > 0) {
+      const titleQuery = profile.targetJobTitles.join(' ');
+      allJobs = await getCachedQuery(titleQuery);
+      // Supplement with the default feed to widen the candidate pool
+      const defaultJobs = await getCachedJobs();
+      const seen = new Set(allJobs.map(j => j.id));
+      allJobs = [...allJobs, ...defaultJobs.filter(j => !seen.has(j.id))];
+    } else {
+      allJobs = await getCachedJobs();
+    }
+
+    // ── Score every job, split into qualified and target-role gaps ───────────
+    const qualified:      ReturnType<typeof Object.assign>[] = [];
+    const targetRolesGap: ReturnType<typeof Object.assign>[] = [];
+
+    for (const job of allJobs) {
+      const jobData = { title: job.title, description: job.description, jobType: job.jobType };
+      const result  = computeFitScore(profile, jobData);
+
+      const scored = {
+        ...job,
+        fitScore:     result.score,
+        fitBreakdown: result.breakdown,
+        matchedSkills: result.matchedSkills,
+        matchedTitle:  result.matchedTitle,
+      };
+
+      if (result.score >= FIT_SCORE_THRESHOLD) {
+        qualified.push(scored);
+      } else if (result.breakdown.titleScore > 0) {
+        // Below threshold but title overlaps a user target title →
+        // surface as a gap card so the user understands why it is hidden.
+        // Cap at 5 gap cards to avoid overwhelming the UI.
+        if (targetRolesGap.length < 5) {
+          const gap = computeGapAnalysis(profile, jobData, result);
+          targetRolesGap.push({ ...scored, gap });
+        }
+      }
+    }
+
+    qualified.sort((a, b) => b.fitScore - a.fitScore);
+    targetRolesGap.sort((a, b) => b.fitScore - a.fitScore);
+
+    res.json({
+      noProfile:     false,
+      threshold:     FIT_SCORE_THRESHOLD,
+      jobs:          qualified,
+      targetRolesGap,
+    });
+  } catch (err) {
+    console.error('Error building recommendations:', err);
+    res.status(500).json({ error: 'Failed to load recommendations' });
   }
 });
 

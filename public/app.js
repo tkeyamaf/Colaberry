@@ -10,6 +10,50 @@
 // Constants
 // ---------------------------------------------------------------------------
 const API_BASE = '';
+
+// ---------------------------------------------------------------------------
+// HTML Sanitizer — used only for AI-generated enhanced resume output.
+// Parses the raw HTML string in an inert document (no script execution),
+// removes unsafe elements and attributes, then returns the cleaned inner HTML.
+// ---------------------------------------------------------------------------
+function sanitizeResumeHtml(raw) {
+  // UNSAFE_TAGS: elements that can execute code or load external resources.
+  const UNSAFE_TAGS = new Set([
+    'script', 'iframe', 'object', 'embed', 'form',
+    'link', 'style', 'base', 'meta', 'noscript',
+  ]);
+
+  // UNSAFE_ATTR_PATTERN: matches any inline event handler (onclick, onload, …)
+  const UNSAFE_ATTR_PATTERN = /^on/i;
+
+  // Parse into an inert DOM — DOMParser does not execute scripts.
+  const doc = new DOMParser().parseFromString(raw || '', 'text/html');
+
+  // Walk every element in the parsed tree.
+  doc.body.querySelectorAll('*').forEach(el => {
+    // 1. Remove unsafe element entirely (and its subtree).
+    if (UNSAFE_TAGS.has(el.tagName.toLowerCase())) {
+      el.remove();
+      return;
+    }
+
+    // 2. Remove unsafe attributes on allowed elements.
+    [...el.attributes].forEach(attr => {
+      const name  = attr.name.toLowerCase();
+      const value = attr.value.toLowerCase().replace(/\s/g, '');
+
+      // Strip inline event handlers (onclick, onmouseover, …)
+      if (UNSAFE_ATTR_PATTERN.test(name)) { el.removeAttribute(attr.name); return; }
+
+      // Strip javascript: URLs from href and src
+      if ((name === 'href' || name === 'src') && value.startsWith('javascript:')) {
+        el.removeAttribute(attr.name);
+      }
+    });
+  });
+
+  return doc.body.innerHTML;
+}
 const TOKEN_KEY = 'cb_token';
 const USER_KEY  = 'cb_user';
 const UUID_RE   = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -415,7 +459,7 @@ async function refreshSavedJobIds() {
 }
 
 function renderJobCard(job, options = {}) {
-  const { showSave = false, showApply = false, showRemove = false } = options;
+  const { showSave = false, showApply = false, showRemove = false, computedFitScore = null } = options;
   const status = (job.status || 'OPEN').toUpperCase();
   const statusClass = status === 'OPEN' ? 'open' : status === 'REOPENED' ? 'reopened' : 'closed';
   const fitMin = job.fitScoreMin ?? job.fit_score_min ?? 70;
@@ -465,8 +509,12 @@ function renderJobCard(job, options = {}) {
       </div>
       <p class="job-desc">${escHtml((job.description || '').slice(0, 160) + ((job.description || '').length > 160 ? '…' : ''))}</p>
       <div class="job-fit-bar-wrap">
-        <div class="job-fit-label">Min fit score: ${escHtml(String(fitMin))}</div>
-        <div class="job-fit-bar"><div class="job-fit-fill" style="width:${fitMin}%"></div></div>
+        ${computedFitScore !== null
+          ? `<div class="job-fit-label">Your fit: <strong>${escHtml(String(computedFitScore))}/100</strong></div>
+             <div class="job-fit-bar"><div class="job-fit-fill" style="width:${computedFitScore}%; background:${computedFitScore >= 70 ? '#2d8a4e' : computedFitScore >= 40 ? '#d4a017' : '#e53e3e'}"></div></div>`
+          : `<div class="job-fit-label">Min fit score: ${escHtml(String(fitMin))}</div>
+             <div class="job-fit-bar"><div class="job-fit-fill" style="width:${fitMin}%"></div></div>`
+        }
       </div>
       <div class="job-actions">
         <div class="job-actions-primary">
@@ -491,10 +539,6 @@ function goCheckEligibility(jobId) {
     if (sel && jobId) {
       sel.value = jobId;
       sel.dispatchEvent(new Event('change'));
-    }
-    if (state.currentUser) {
-      const sidInput = document.getElementById('elig-student-id');
-      if (sidInput && !sidInput.value) sidInput.value = state.currentUser.studentId || '';
     }
   }, 100);
 }
@@ -642,7 +686,7 @@ function renderDashboard(data) {
   const welcome = document.getElementById('dash-welcome-name');
   const badge   = document.getElementById('dash-student-badge');
   if (welcome) welcome.textContent = `Welcome back, ${user.fullName?.split(' ')[0] || 'friend'}!`;
-  if (badge)   badge.textContent   = user.studentNumber || '';
+  if (badge)   badge.textContent   = user.email || '';
 
   // Fit score ring
   const fitVal  = document.getElementById('dash-fit-val');
@@ -771,6 +815,8 @@ function showProfileForm() {
 // ---------------------------------------------------------------------------
 // Tags Input
 // ---------------------------------------------------------------------------
+const tagControllers = {};
+
 function setupTagsInput(inputId, tagsId, hiddenId) {
   const input  = document.getElementById(inputId);
   const tags   = document.getElementById(tagsId);
@@ -808,6 +854,14 @@ function setupTagsInput(inputId, tagsId, hiddenId) {
   // Click on wrap to focus input
   const wrap = document.getElementById(inputId.replace('-input', '-wrap'));
   if (wrap) wrap.addEventListener('click', () => input.focus());
+
+  // Expose add/clear for programmatic prefill (e.g. from resume parsing)
+  tagControllers[hiddenId] = {
+    add(val) {
+      if (val && !tagValues.includes(val)) { tagValues.push(val); renderTags(); }
+    },
+    clear() { tagValues.length = 0; renderTags(); },
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -819,26 +873,104 @@ function setupResumeDropZone() {
   const fileLabel= document.getElementById('resume-file-name');
   if (!zone || !fileInput) return;
 
+  function handleFile(file) {
+    if (!file) return;
+    showResumeFile(file, fileLabel);
+    if (file.type === 'text/plain' || file.name.endsWith('.txt')) {
+      const reader = new FileReader();
+      reader.onload = e => {
+        const pasteEl = document.getElementById('resume-paste');
+        if (pasteEl) pasteEl.value = e.target.result || '';
+        showToast('Resume text loaded — click "Parse with AI" to prefill your profile.', 'info');
+      };
+      reader.readAsText(file);
+    } else {
+      showToast('Non-text file selected. Please paste your resume text below.', 'info');
+    }
+  }
+
   zone.addEventListener('click', () => fileInput.click());
   zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
   zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
   zone.addEventListener('drop', e => {
     e.preventDefault();
     zone.classList.remove('drag-over');
-    const file = e.dataTransfer.files[0];
-    if (file) showResumeFile(file, fileLabel);
+    handleFile(e.dataTransfer.files[0]);
   });
 
-  fileInput.addEventListener('change', () => {
-    if (fileInput.files[0]) showResumeFile(fileInput.files[0], fileLabel);
-  });
+  fileInput.addEventListener('change', () => handleFile(fileInput.files[0]));
 }
 
 function showResumeFile(file, labelEl) {
   if (!labelEl) return;
   labelEl.textContent = `📎 ${file.name} (${(file.size / 1024).toFixed(0)} KB)`;
   labelEl.style.display = 'block';
-  showToast('Resume selected. Save your profile to upload.', 'info');
+}
+
+// ---------------------------------------------------------------------------
+// Resume Parse (AI prefill)
+// ---------------------------------------------------------------------------
+async function parseResumeText() {
+  const pasteEl  = document.getElementById('resume-paste');
+  const statusEl = document.getElementById('resume-parse-status');
+  const btn      = document.getElementById('resume-parse-btn');
+  const resumeText = pasteEl?.value?.trim() || '';
+
+  if (resumeText.length < 20) {
+    if (statusEl) statusEl.textContent = 'Please paste at least a few lines of resume text first.';
+    return;
+  }
+
+  if (btn)      { btn.disabled = true; btn.textContent = 'Parsing…'; }
+  if (statusEl) statusEl.textContent = '';
+
+  try {
+    const res  = await fetch(`${API_BASE}/api/ai/resume-parse`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ resumeText }),
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      if (statusEl) statusEl.textContent = data.error || 'Parse failed.';
+      return;
+    }
+
+    // Prefill skills tags
+    if (Array.isArray(data.skills) && data.skills.length > 0) {
+      tagControllers['p-skills']?.clear();
+      data.skills.forEach(s => tagControllers['p-skills']?.add(s));
+    }
+
+    // Prefill target job titles tags
+    if (Array.isArray(data.targetJobTitles) && data.targetJobTitles.length > 0) {
+      tagControllers['p-target-job-titles']?.clear();
+      data.targetJobTitles.forEach(t => tagControllers['p-target-job-titles']?.add(t));
+    }
+
+    // Prefill job type select
+    if (data.jobTypes) {
+      const jobTypeEl = document.getElementById('p-job-types');
+      if (jobTypeEl) {
+        const opt = [...jobTypeEl.options].find(o => o.value === data.jobTypes || o.text === data.jobTypes);
+        if (opt) jobTypeEl.value = opt.value;
+      }
+    }
+
+    // Prefill summary textarea
+    if (data.summary) {
+      const summaryEl = document.getElementById('p-summary');
+      if (summaryEl && !summaryEl.value) summaryEl.value = data.summary;
+    }
+
+    if (statusEl) statusEl.textContent = '✓ Fields prefilled — review and edit before saving.';
+    showToast('Resume parsed! Review the prefilled fields.', 'success');
+  } catch {
+    if (statusEl) statusEl.textContent = 'Network error — please try again.';
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Parse with AI'; }
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -862,12 +994,10 @@ function populateEligJobSelect() {
     select.appendChild(opt);
   });
 
-  // Auto-fill student ID / fit score if logged in
+  // Auto-fill fit score if logged in
   if (state.currentUser) {
-    const studentIdEl = document.getElementById('elig-student-id');
-    const fitEl       = document.getElementById('elig-fit-score');
-    if (studentIdEl && !studentIdEl.value) studentIdEl.value = state.currentUser.id || '';
-    if (fitEl       && !fitEl.value)       fitEl.value       = state.currentUser.fitScore ?? '';
+    const fitEl = document.getElementById('elig-fit-score');
+    if (fitEl && !fitEl.value) fitEl.value = state.currentUser.fitScore ?? '';
   }
 }
 
@@ -887,7 +1017,6 @@ function setupEligJobSelect() {
 }
 
 async function checkEligibility() {
-  const studentIdEl = document.getElementById('elig-student-id');
   const jobIdEl     = document.getElementById('elig-job-id');
   const companyIdEl = document.getElementById('elig-company-id');
   const fitScoreEl  = document.getElementById('elig-fit-score');
@@ -895,17 +1024,25 @@ async function checkEligibility() {
   const resultEl    = document.getElementById('elig-result');
   const btn         = document.getElementById('elig-check-btn');
 
-  clearFieldErrors('elig-student-id-err', 'elig-job-id-err', 'elig-company-id-err', 'elig-fit-score-err');
+  clearFieldErrors('elig-job-id-err', 'elig-company-id-err', 'elig-fit-score-err');
   if (resultEl) resultEl.style.display = 'none';
 
-  const studentId = (studentIdEl?.value || '').trim();
+  const studentId = state.currentUser?.id || '';
   const jobId     = (jobIdEl?.value     || '').trim();
   const companyId = (companyIdEl?.value || '').trim();
   const fitScore  = Number(fitScoreEl?.value || 0);
   const jobStatus = statusEl?.value || 'OPEN';
 
+  if (!studentId) {
+    if (resultEl) {
+      resultEl.className = 'elig-result elig-result--denied';
+      resultEl.innerHTML = '<h3>Not Logged In</h3><p>Please sign in to check your eligibility.</p>';
+      resultEl.style.display = 'block';
+    }
+    return;
+  }
+
   let hasError = false;
-  if (!isUuid(studentId)) { setFieldError(studentIdEl, document.getElementById('elig-student-id-err'), 'Please enter a valid UUID'); hasError = true; }
   if (!isUuid(jobId))     { setFieldError(jobIdEl,     document.getElementById('elig-job-id-err'),     'Please enter a valid UUID'); hasError = true; }
   if (!isUuid(companyId)) { setFieldError(companyIdEl, document.getElementById('elig-company-id-err'), 'Please enter a valid UUID'); hasError = true; }
   if (isNaN(fitScore) || fitScore < 0 || fitScore > 100) {
@@ -944,74 +1081,230 @@ async function checkEligibility() {
 }
 
 // ---------------------------------------------------------------------------
-// Recommendations
+// Recommendations — deterministic fit scoring
 // ---------------------------------------------------------------------------
 function prefillRecommendations() {
-  if (!state.currentUser) return;
-  const studentIdEl = document.getElementById('rec-student-id');
-  const fitEl       = document.getElementById('rec-fit-score');
-  if (studentIdEl && !studentIdEl.value) studentIdEl.value = state.currentUser.id || '';
-  if (fitEl       && !fitEl.value)       fitEl.value       = state.currentUser.fitScore ?? '';
+  // No-op: scoring is fully server-side; nothing to prefill.
 }
 
 async function loadRecommendations() {
-  const studentIdEl = document.getElementById('rec-student-id');
-  const fitScoreEl  = document.getElementById('rec-fit-score');
-  const btn         = document.getElementById('rec-btn');
-  const grid        = document.getElementById('rec-grid');
-  const empty       = document.getElementById('rec-empty');
-  const errorEl     = document.getElementById('rec-error');
+  const btn        = document.getElementById('rec-btn');
+  const grid       = document.getElementById('rec-grid');
+  const empty      = document.getElementById('rec-empty');
+  const emptyTitle = document.getElementById('rec-empty-title');
+  const emptyMsg   = document.getElementById('rec-empty-msg');
+  const errorEl    = document.getElementById('rec-error');
+  const noteEl     = document.getElementById('rec-threshold-note');
 
-  clearFieldErrors('rec-student-id-err', 'rec-fit-score-err');
-
-  const studentId = (studentIdEl?.value || '').trim();
-  const fitScore  = Number(fitScoreEl?.value || 0);
-
-  let hasError = false;
-  if (!isUuid(studentId)) {
-    setFieldError(studentIdEl, document.getElementById('rec-student-id-err'), 'Please enter a valid UUID');
-    hasError = true;
-  }
-  if (isNaN(fitScore) || fitScore < 0 || fitScore > 100) {
-    setFieldError(fitScoreEl, document.getElementById('rec-fit-score-err'), 'Enter a number between 0 and 100');
-    hasError = true;
-  }
-  if (hasError) return;
-
-  if (btn) { btn.disabled = true; btn.textContent = 'Loading…'; }
-  if (grid)  { grid.style.display = 'none'; grid.innerHTML = ''; }
-  if (empty) empty.style.display = 'none';
+  if (grid)    { grid.style.display = 'none'; grid.innerHTML = ''; }
+  if (empty)   empty.style.display  = 'none';
   if (errorEl) errorEl.style.display = 'none';
+  const gapSectionEl = document.getElementById('rec-gap-section');
+  if (gapSectionEl) gapSectionEl.style.display = 'none';
+
+  if (!state.currentUser) {
+    if (emptyTitle) emptyTitle.textContent = 'Sign in to see your matches';
+    if (emptyMsg)   emptyMsg.textContent   = 'Create a free account or log in to get personalized job recommendations.';
+    if (empty) empty.style.display = 'block';
+    return;
+  }
+
+  if (btn) { btn.disabled = true; btn.textContent = 'Finding matches…'; }
 
   try {
-    const params = new URLSearchParams({ studentId, fitScore });
-    const res = await fetch(`${API_BASE}/jobs/recommend?${params}`);
+    const res  = await fetch(`${API_BASE}/api/jobs/recommended`, { headers: authHeaders() });
+    const data = await res.json();
 
-    if (res.status === 404) {
-      if (empty) { empty.style.display = 'block'; }
+    if (!res.ok) throw new Error(data.error || 'Failed to load recommendations');
+
+    // Server signals the user has no scoreable profile data yet
+    if (data.noProfile) {
+      if (emptyTitle) emptyTitle.textContent = 'Complete your profile first';
+      if (emptyMsg)   emptyMsg.textContent   = 'Add skills and target job titles to your profile so we can find jobs that match you.';
+      if (empty) empty.style.display = 'block';
+      if (noteEl) noteEl.textContent = '';
       return;
     }
-    if (!res.ok) throw new Error('Failed to load recommendations');
 
-    const data = await res.json();
-    const jobs = Array.isArray(data) ? data : (data.jobs || data.recommendations || []);
+    const jobs    = data.jobs          || [];
+    const gapJobs = data.targetRolesGap || [];
+    if (noteEl) noteEl.textContent = `Showing jobs scoring ≥ ${data.threshold}/100`;
 
     if (jobs.length === 0) {
+      if (emptyTitle) emptyTitle.textContent = 'No qualifying jobs yet';
+      if (emptyMsg)   emptyMsg.textContent   = `No jobs currently score ${data.threshold}/100 or higher against your profile. Try adding more skills or target titles.`;
       if (empty) empty.style.display = 'block';
     } else {
       if (grid) {
         grid.style.display = 'grid';
-        grid.innerHTML = jobs.map(j => renderJobCard(j, { showApply: true, showSave: !!state.currentUser })).join('');
+        grid.innerHTML = jobs.map(j =>
+          renderJobCard(j, { showApply: true, showSave: true, computedFitScore: j.fitScore })
+        ).join('');
       }
     }
-  } catch {
+
+    // Render gap section when there are underqualified target-role matches
+    const gapSection = document.getElementById('rec-gap-section');
+    const gapGrid    = document.getElementById('rec-gap-grid');
+    if (gapJobs.length > 0 && gapSection && gapGrid) {
+      gapGrid.innerHTML = gapJobs.map(j => renderTargetRoleGapCard(j)).join('');
+      gapSection.style.display = 'block';
+    } else if (gapSection) {
+      gapSection.style.display = 'none';
+    }
+  } catch (err) {
     if (errorEl) {
       errorEl.className = 'error-state';
-      errorEl.innerHTML = '<div class="empty-icon">⚠️</div><h3>Could not load recommendations</h3><p>Please check your student ID and try again.</p>';
+      errorEl.innerHTML = '<div class="empty-icon">⚠️</div><h3>Could not load recommendations</h3><p>Please try again in a moment.</p>';
       errorEl.style.display = 'block';
     }
   } finally {
-    if (btn) { btn.disabled = false; btn.textContent = 'Get My Recommendations'; }
+    if (btn) { btn.disabled = false; btn.textContent = 'Find My Matches'; }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Target-role gap cards
+// ---------------------------------------------------------------------------
+function renderTargetRoleGapCard(job) {
+  const gap          = job.gap || {};
+  const missingSkills = gap.missingSkills  || [];
+  const gapReasons   = gap.gapReasons    || [];
+  const matchedSkills = job.matchedSkills || [];
+
+  const missingBadges = missingSkills
+    .map(s => `<span class="skill-badge skill-badge--missing" title="Not yet in your profile">${escHtml(s)}</span>`)
+    .join('');
+
+  const presentBadges = matchedSkills
+    .map(s => `<span class="skill-badge skill-badge--present" title="You already have this">${escHtml(s)}</span>`)
+    .join('');
+
+  const reasonItems = gapReasons
+    .map(r => `<li>${escHtml(r)}</li>`)
+    .join('');
+
+  // Encode job data for the enhance button (safe JSON attr)
+  const jobPayload = encodeURIComponent(JSON.stringify({
+    id:          job.id,
+    title:       job.title,
+    company:     job.company,
+    description: job.description,
+    missingSkills,
+  }));
+
+  return `
+    <div class="gap-card">
+      <div class="gap-card-header">
+        <div>
+          <div class="job-title">${escHtml(job.title)}</div>
+          <div class="job-company">${escHtml(job.company)} &bull; ${escHtml(job.location || 'Location not specified')}</div>
+        </div>
+        <div class="gap-score-badge">
+          <span class="gap-score-num">${escHtml(String(job.fitScore))}</span>
+          <span class="gap-score-label">/100</span>
+        </div>
+      </div>
+
+      ${gapReasons.length > 0 ? `
+      <div class="gap-why">
+        <strong>Why you don't yet qualify:</strong>
+        <ul>${reasonItems}</ul>
+      </div>` : ''}
+
+      ${missingSkills.length > 0 ? `
+      <div class="gap-skills">
+        <div class="gap-skills-label">Skills this role requires that aren't on your profile:</div>
+        <div class="gap-badges">${missingBadges}</div>
+      </div>` : ''}
+
+      ${matchedSkills.length > 0 ? `
+      <div class="gap-skills" style="margin-top:8px">
+        <div class="gap-skills-label">Skills you already have that match:</div>
+        <div class="gap-badges">${presentBadges}</div>
+      </div>` : ''}
+
+      <div class="gap-actions">
+        <button class="btn btn-outline btn-sm" onclick="openEnhanceModal(decodeURIComponent('${jobPayload}'))">
+          Enhance Resume for This Role
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+// ---------------------------------------------------------------------------
+// Enhanced Resume Modal
+// ---------------------------------------------------------------------------
+let _enhanceJob = null; // holds job context while modal is open
+
+function openEnhanceModal(jobJsonStr) {
+  try {
+    _enhanceJob = JSON.parse(jobJsonStr);
+  } catch {
+    showToast('Could not open enhance dialog.', 'error');
+    return;
+  }
+
+  const modal    = document.getElementById('enhance-modal');
+  const titleEl  = document.getElementById('enhance-modal-job-title');
+  const outputArea = document.getElementById('enhance-output-area');
+  const statusEl   = document.getElementById('enhance-status');
+  const textEl     = document.getElementById('enhance-resume-text');
+
+  if (titleEl) titleEl.textContent = _enhanceJob.title || '';
+  if (outputArea) outputArea.style.display = 'none';
+  if (statusEl)   statusEl.textContent = '';
+  // Pre-fill with the user's saved summary if the textarea is empty
+  if (textEl && !textEl.value && state.currentUser?.summary) {
+    textEl.value = state.currentUser.summary;
+  }
+
+  if (modal) { modal.style.display = 'flex'; document.body.style.overflow = 'hidden'; }
+}
+
+async function generateEnhancedResume() {
+  const textEl    = document.getElementById('enhance-resume-text');
+  const statusEl  = document.getElementById('enhance-status');
+  const btn       = document.getElementById('enhance-generate-btn');
+  const outputArea = document.getElementById('enhance-output-area');
+  const outputEl  = document.getElementById('enhance-resume-output');
+
+  const resumeText = textEl?.value?.trim() || '';
+  if (resumeText.length < 20) {
+    if (statusEl) statusEl.textContent = 'Please paste at least a few lines of your resume first.';
+    return;
+  }
+  if (!_enhanceJob) return;
+
+  if (btn)      { btn.disabled = true;   btn.textContent = 'Generating…'; }
+  if (statusEl) statusEl.textContent = '';
+  if (outputArea) outputArea.style.display = 'none';
+
+  try {
+    const res  = await fetch(`${API_BASE}/api/ai/resume-enhance`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({
+        resumeText,
+        targetJobTitle: _enhanceJob.title,
+        jobDescription: _enhanceJob.description,
+        missingSkills:  _enhanceJob.missingSkills || [],
+      }),
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      if (statusEl) statusEl.textContent = data.error || 'Generation failed.';
+      return;
+    }
+
+    if (outputEl)  outputEl.innerHTML = sanitizeResumeHtml(data.html);
+    if (outputArea) outputArea.style.display = 'block';
+  } catch {
+    if (statusEl) statusEl.textContent = 'Network error — please try again.';
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Generate Enhanced Resume'; }
   }
 }
 
@@ -1219,11 +1512,9 @@ function showOnboarding(user) {
 
   const nameEl   = document.getElementById('onboarding-name');
   const emailEl  = document.getElementById('onboarding-email');
-  const numEl    = document.getElementById('onboarding-student-num');
 
   if (nameEl)  nameEl.textContent  = user.fullName?.split(' ')[0] || 'friend';
   if (emailEl) emailEl.textContent = user.email || 'your email';
-  if (numEl)   numEl.textContent   = user.studentNumber || '—';
 
   overlay.style.display = 'flex';
   document.body.style.overflow = 'hidden';
@@ -1252,10 +1543,18 @@ function setupProfileForm() {
     if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Saving…'; }
 
     try {
-      const res = await fetch(`${API_BASE}/api/candidates`, {
-        method: 'POST',
+      const res = await fetch(`${API_BASE}/api/profile`, {
+        method: 'PUT',
         headers: authHeaders(),
-        body: JSON.stringify(data),
+        body: JSON.stringify({
+          phone:             data.phone             || null,
+          city:              data.city              || null,
+          state:             data.state             || null,
+          skills:            data.skills            || null,
+          target_job_titles: data.target_job_titles || null,
+          job_types:         data.job_types         || null,
+          summary:           data.summary           || null,
+        }),
       });
 
       if (res.ok) {
@@ -1445,6 +1744,30 @@ function setupEventListeners() {
   // Recommendations
   document.getElementById('rec-btn')?.addEventListener('click', loadRecommendations);
 
+  // Resume parse
+  document.getElementById('resume-parse-btn')?.addEventListener('click', parseResumeText);
+
+  // Enhanced resume modal
+  document.getElementById('enhance-modal-close')?.addEventListener('click', () => {
+    const m = document.getElementById('enhance-modal');
+    if (m) m.style.display = 'none';
+    document.body.style.overflow = '';
+  });
+  document.getElementById('enhance-modal')?.addEventListener('click', e => {
+    if (e.target === e.currentTarget) {
+      e.currentTarget.style.display = 'none';
+      document.body.style.overflow = '';
+    }
+  });
+  document.getElementById('enhance-generate-btn')?.addEventListener('click', generateEnhancedResume);
+  document.getElementById('enhance-copy-btn')?.addEventListener('click', () => {
+    const html = document.getElementById('enhance-resume-output')?.innerHTML || '';
+    navigator.clipboard.writeText(html).then(
+      () => showToast('HTML copied to clipboard', 'success'),
+      () => showToast('Copy failed — select and copy manually', 'error')
+    );
+  });
+
   // Onboarding overlay buttons
   document.getElementById('btn-onboarding-profile')?.addEventListener('click', () => {
     const overlay = document.getElementById('onboarding-overlay');
@@ -1486,6 +1809,7 @@ async function init() {
   setupTagsInput('skills-input',     'skills-tags',    'p-skills');
   setupTagsInput('certs-input',      'certs-tags',     'p-certs');
   setupTagsInput('industries-input', 'industries-tags','p-industries');
+  setupTagsInput('titles-input',     'titles-tags',    'p-target-job-titles');
   setupResumeDropZone();
   setupEligJobSelect();
 

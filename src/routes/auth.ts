@@ -22,7 +22,7 @@ function getTransporter() {
   });
 }
 
-async function sendWelcomeEmail(email: string, fullName: string, studentNumber: string) {
+async function sendWelcomeEmail(email: string, fullName: string) {
   try {
     const transporter = getTransporter();
     await transporter.sendMail({
@@ -38,11 +38,6 @@ async function sendWelcomeEmail(email: string, fullName: string, studentNumber: 
           <div style="background: #f5f0e8; padding: 30px; border-radius: 0 0 12px 12px;">
             <h2 style="color: #1a1a2e;">Hi ${fullName}! 👋</h2>
             <p style="color: #4a5568; line-height: 1.6;">You've taken the first step toward landing a career you love. We're excited to have you on CareerBridge!</p>
-            <div style="background: white; border: 2px solid #2d8a4e; border-radius: 12px; padding: 20px; margin: 20px 0; text-align: center;">
-              <p style="color: #4a5568; margin: 0 0 8px; font-size: 14px;">Your Student Number</p>
-              <p style="color: #2d8a4e; font-size: 32px; font-weight: bold; margin: 0; letter-spacing: 2px;">${studentNumber}</p>
-              <p style="color: #718096; font-size: 12px; margin: 8px 0 0;">Keep this safe — you'll use it to track your applications</p>
-            </div>
             <h3 style="color: #1a1a2e;">Your Next Steps:</h3>
             <ol style="color: #4a5568; line-height: 2;">
               <li>Complete your profile with your skills and experience</li>
@@ -108,7 +103,7 @@ router.post('/auth/signup', async (req: Request, res: Response) => {
     const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
 
     // Send welcome email (non-blocking)
-    sendWelcomeEmail(user.email, user.full_name, user.student_number);
+    sendWelcomeEmail(user.email, user.full_name);
 
     res.status(201).json({
       token,
@@ -116,7 +111,6 @@ router.post('/auth/signup', async (req: Request, res: Response) => {
         id: user.id,
         fullName: user.full_name,
         email: user.email,
-        studentNumber: user.student_number,
         profileComplete: user.profile_complete,
         fitScore: user.fit_score,
       },
@@ -163,7 +157,6 @@ router.post('/auth/login', async (req: Request, res: Response) => {
         id: user.id,
         fullName: user.full_name,
         email: user.email,
-        studentNumber: user.student_number,
         profileComplete: user.profile_complete,
         fitScore: user.fit_score,
       },
@@ -187,7 +180,7 @@ router.get('/auth/me', async (req: Request, res: Response) => {
     const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
 
     const result = await pool.query(
-      'SELECT id, full_name, email, student_number, profile_complete, fit_score, phone, city, state, created_at FROM users WHERE id = $1',
+      'SELECT id, full_name, email, student_number, profile_complete, fit_score, phone, city, state, skills, target_job_titles, job_types, summary, created_at FROM users WHERE id = $1',
       [decoded.userId]
     );
 
@@ -201,12 +194,15 @@ router.get('/auth/me', async (req: Request, res: Response) => {
       id: user.id,
       fullName: user.full_name,
       email: user.email,
-      studentNumber: user.student_number,
       profileComplete: user.profile_complete,
       fitScore: user.fit_score,
       phone: user.phone,
       city: user.city,
       state: user.state,
+      skills: user.skills,
+      targetJobTitles: user.target_job_titles,
+      jobTypes: user.job_types,
+      summary: user.summary,
       memberSince: user.created_at,
     });
   } catch {

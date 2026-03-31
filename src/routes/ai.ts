@@ -38,6 +38,124 @@ router.post('/ai/resume', async (req: Request, res: Response) => {
   }
 });
 
+// POST /api/ai/resume-parse — extract structured fields from pasted resume text
+router.post('/ai/resume-parse', async (req: Request, res: Response) => {
+  if (!process.env.ANTHROPIC_API_KEY) {
+    res.status(503).json({ error: 'AI service not configured' });
+    return;
+  }
+
+  const { resumeText } = req.body;
+  if (!resumeText || typeof resumeText !== 'string' || resumeText.trim().length < 20) {
+    res.status(400).json({ error: 'resumeText is required (minimum 20 characters)' });
+    return;
+  }
+
+  try {
+    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+    const prompt = `Extract structured profile data from the resume text below. Return ONLY a valid JSON object with these exact keys:
+- "skills": array of skill strings (technical tools, languages, and soft skills; max 20 items)
+- "targetJobTitles": array of up to 3 job title strings the candidate is targeting based on their background (e.g. ["Data Analyst", "Business Analyst"])
+- "jobTypes": string — one of "Full-time", "Part-time", "Contract", "Internship", or "Freelance"; infer from context, default to "Full-time"
+- "summary": string — a 2–3 sentence professional summary derived from their experience
+
+If a field cannot be determined, use [] for arrays or "" for strings. Return raw JSON only, no markdown.
+
+Resume:
+${resumeText.slice(0, 4000)}`;
+
+    const message = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 600,
+      messages: [{ role: 'user', content: prompt }],
+    });
+
+    const raw = message.content[0].type === 'text' ? message.content[0].text : '{}';
+    const jsonMatch = raw.match(/\{[\s\S]*\}/);
+    const parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : {};
+
+    res.json({
+      skills: Array.isArray(parsed.skills) ? parsed.skills.map(String) : [],
+      targetJobTitles: Array.isArray(parsed.targetJobTitles) ? parsed.targetJobTitles.map(String) : [],
+      jobTypes: typeof parsed.jobTypes === 'string' ? parsed.jobTypes : 'Full-time',
+      summary: typeof parsed.summary === 'string' ? parsed.summary : '',
+    });
+  } catch (err: any) {
+    console.error('Resume parse error:', err);
+    res.status(500).json({ error: 'Failed to parse resume. Please try again.' });
+  }
+});
+
+// POST /api/ai/resume-enhance — rewrite the user's existing resume for a target
+// role using keyword alignment only.  No fabrication is allowed by the prompt.
+router.post('/ai/resume-enhance', async (req: Request, res: Response) => {
+  if (!process.env.ANTHROPIC_API_KEY) {
+    res.status(503).json({ error: 'AI service not configured' });
+    return;
+  }
+
+  const { resumeText, targetJobTitle, jobDescription, missingSkills } = req.body;
+
+  if (!resumeText || typeof resumeText !== 'string' || resumeText.trim().length < 20) {
+    res.status(400).json({ error: 'resumeText is required (minimum 20 characters)' });
+    return;
+  }
+  if (!targetJobTitle || typeof targetJobTitle !== 'string') {
+    res.status(400).json({ error: 'targetJobTitle is required' });
+    return;
+  }
+
+  // Build the list of skills the user is missing so the prompt can
+  // explicitly instruct Claude NOT to add them.
+  const missingList = Array.isArray(missingSkills) && missingSkills.length > 0
+    ? missingSkills.join(', ')
+    : 'none identified';
+
+  const prompt = `You are an expert resume writer helping a candidate optimize their existing resume for a specific target role.
+
+TRUTHFULNESS RULES — follow these exactly. Violations make the resume fraudulent:
+1. Use ONLY information present in the candidate's existing resume text below.
+2. Do NOT add, imply, or claim any skill, tool, certification, job title, company name, project, achievement, or year of experience that does not already appear in the resume text.
+3. The following skills are MISSING from the candidate's profile — do NOT add them to the resume, even if the job description asks for them: ${missingList}
+4. You MAY improve: sentence clarity, action verbs, section order, formatting, and keyword phrasing — but only when the underlying fact already exists in the resume.
+5. If the job description uses a synonym for something the candidate already has (e.g. "data visualisation" when resume says "Tableau"), you MAY adopt the job's phrasing since the skill is real.
+6. Add a short honesty note at the very top of the output.
+
+Target Role: ${targetJobTitle.slice(0, 200)}
+
+Job Description (use its language to rephrase existing content only):
+${(jobDescription || '').slice(0, 1500)}
+
+Candidate's Existing Resume:
+${resumeText.slice(0, 3000)}
+
+Return ONLY an HTML document fragment inside <div class="enhanced-resume-output">. Start with:
+<p class="resume-honesty-note" style="background:#e8f5ee;border-left:4px solid #2d8a4e;padding:10px 14px;font-size:0.85rem;color:#1a1a2e;margin-bottom:20px">
+  ✅ <strong>Optimized for keyword alignment.</strong> All content reflects your existing experience — no new skills, titles, or achievements have been added.
+</p>
+Then the full resume in clean HTML with sections: Summary, Skills, Experience, Education. No markdown, no explanation outside the HTML.`;
+
+  try {
+    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+    const message = await anthropic.messages.create({
+      model:      'claude-opus-4-6',
+      max_tokens: 2048,
+      messages:   [{ role: 'user', content: prompt }],
+    });
+
+    const raw  = message.content[0].type === 'text' ? message.content[0].text : '';
+    // Strip any markdown code fences Claude might add despite instructions
+    const html = raw.replace(/^```html?\n?/i, '').replace(/\n?```$/, '').trim();
+
+    res.json({ html });
+  } catch (err: any) {
+    console.error('Resume enhance error:', err);
+    res.status(500).json({ error: 'Failed to generate enhanced resume. Please try again.' });
+  }
+});
+
 // POST /api/ai/interview-prep
 router.post('/ai/interview-prep', async (req: Request, res: Response) => {
   if (!process.env.ANTHROPIC_API_KEY) {

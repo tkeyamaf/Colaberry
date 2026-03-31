@@ -16,6 +16,44 @@ function getUserId(req: Request): string | null {
   }
 }
 
+// PUT /api/profile — update structured profile fields on the users table
+router.put('/profile', async (req: Request, res: Response) => {
+  const userId = getUserId(req);
+  if (!userId) { res.status(401).json({ error: 'Not authenticated' }); return; }
+
+  const { phone, city, state, skills, target_job_titles, job_types, summary } = req.body;
+
+  try {
+    await pool.query(
+      `UPDATE users SET
+         phone             = $1,
+         city              = $2,
+         state             = $3,
+         skills            = $4,
+         target_job_titles = $5,
+         job_types         = $6,
+         summary           = $7,
+         profile_complete  = true,
+         updated_at        = now()
+       WHERE id = $8`,
+      [
+        phone             || null,
+        city              || null,
+        state             || null,
+        skills            || null,
+        target_job_titles || null,
+        job_types         || null,
+        summary           || null,
+        userId,
+      ]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Profile update error:', err);
+    res.status(500).json({ error: 'Failed to update profile' });
+  }
+});
+
 // POST /api/jobs/save
 router.post('/jobs/save', async (req: Request, res: Response) => {
   const userId = getUserId(req);
@@ -105,7 +143,7 @@ router.get('/dashboard', async (req: Request, res: Response) => {
 
   try {
     const [userRes, savedRes, appsRes, savedCountRes, appsCountRes] = await Promise.all([
-      pool.query('SELECT id, full_name, email, student_number, profile_complete, fit_score, created_at FROM users WHERE id = $1', [userId]),
+      pool.query('SELECT id, full_name, email, student_number, profile_complete, fit_score, skills, target_job_titles, job_types, summary, created_at FROM users WHERE id = $1', [userId]),
       pool.query('SELECT * FROM saved_jobs WHERE user_id = $1 ORDER BY saved_at DESC LIMIT 5', [userId]),
       pool.query('SELECT * FROM job_applications WHERE user_id = $1 ORDER BY applied_at DESC LIMIT 5', [userId]),
       pool.query('SELECT COUNT(*) AS total FROM saved_jobs WHERE user_id = $1', [userId]),
@@ -120,7 +158,6 @@ router.get('/dashboard', async (req: Request, res: Response) => {
         id: user.id,
         fullName: user.full_name,
         email: user.email,
-        studentNumber: user.student_number,
         profileComplete: user.profile_complete,
         fitScore: user.fit_score,
         memberSince: user.created_at,

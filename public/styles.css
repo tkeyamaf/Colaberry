@@ -1636,6 +1636,59 @@ img { max-width: 100%; }
 }
 
 /* =========================================
+   TARGET-ROLE GAP CARDS
+   ========================================= */
+.gap-card {
+  background: white;
+  border: 2px solid #f0c040;
+  border-radius: var(--radius);
+  padding: 20px 24px;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.06);
+}
+.gap-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.gap-score-badge {
+  flex-shrink: 0;
+  background: #fff8e1;
+  border: 1.5px solid #f0c040;
+  border-radius: 8px;
+  padding: 6px 12px;
+  text-align: center;
+  min-width: 62px;
+}
+.gap-score-num  { font-size: 1.4rem; font-weight: 800; color: #b45309; display: block; line-height: 1; }
+.gap-score-label { font-size: 0.7rem; color: var(--text-light); }
+.gap-why { margin-bottom: 12px; }
+.gap-why ul { margin: 6px 0 0 18px; padding: 0; color: var(--text-medium); font-size: 0.875rem; line-height: 1.7; }
+.gap-skills { margin-bottom: 10px; }
+.gap-skills-label { font-size: 0.8rem; color: var(--text-light); margin-bottom: 6px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+.gap-badges { display: flex; flex-wrap: wrap; gap: 6px; }
+.skill-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+.skill-badge--missing {
+  background: #fff0f0;
+  color: #c53030;
+  border: 1px solid #feb2b2;
+}
+.skill-badge--present {
+  background: #e8f5ee;
+  color: #276749;
+  border: 1px solid #9ae6b4;
+}
+.gap-actions { margin-top: 14px; }
+
+/* =========================================
    PRINT STYLES
    ========================================= */
 @media print {
