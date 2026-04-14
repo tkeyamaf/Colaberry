@@ -68,7 +68,7 @@ const REASON_MESSAGES = {
   COMPANY_MISMATCH:   "The Company ID doesn't match this job's employer. Please double-check both IDs.",
 };
 
-const SECTIONS = ['home', 'jobs', 'recommendations', 'profile', 'dashboard', 'about'];
+const SECTIONS = ['home', 'jobs', 'recommendations', 'profile', 'dashboard', 'about', 'admin'];
 
 // ---------------------------------------------------------------------------
 // Application State
@@ -157,6 +157,15 @@ function showSection(name) {
     renderDashboardGate();
   }
 
+  // Protect admin
+  if (name === 'admin') {
+    if (!state.currentUser || state.currentUser.role !== 'admin') {
+      showAdminGate();
+    } else {
+      loadAdminOverview();
+    }
+  }
+
   // Protect profile
   if (name === 'profile') {
     if (!state.currentUser) {
@@ -206,6 +215,8 @@ function updateNav() {
     if (navUser) navUser.style.display = 'flex';
     if (userName) userName.textContent = state.currentUser.fullName?.split(' ')[0] || 'You';
     if (avatar)   avatar.textContent   = (state.currentUser.fullName || 'U')[0].toUpperCase();
+    const adminLink = document.getElementById('admin-nav-item');
+    if (adminLink) adminLink.style.display = state.currentUser.role === 'admin' ? 'flex' : 'none';
   } else {
     if (navAuth) navAuth.style.display = 'flex';
     if (navUser) navUser.style.display = 'none';
@@ -779,6 +790,72 @@ function renderDashboardGate() {
   const gate    = document.getElementById('dashboard-gate');
   if (gate)    gate.style.display    = 'block';
   if (content) content.style.display = 'none';
+}
+
+// ---------------------------------------------------------------------------
+// Admin Overview
+// ---------------------------------------------------------------------------
+function showAdminGate() {
+  const gate    = document.getElementById('admin-gate');
+  const content = document.getElementById('admin-content');
+  if (gate)    gate.style.display    = 'block';
+  if (content) content.style.display = 'none';
+}
+
+async function loadAdminOverview() {
+  const gate    = document.getElementById('admin-gate');
+  const content = document.getElementById('admin-content');
+  if (gate)    gate.style.display    = 'none';
+  if (content) content.style.display = 'block';
+
+  try {
+    const res = await fetch(`${API_BASE}/api/admin/overview`, { headers: authHeaders() });
+    if (res.status === 401 || res.status === 403) { showAdminGate(); return; }
+    if (!res.ok) throw new Error('Admin overview failed');
+    const data = await res.json();
+    renderAdminOverview(data);
+  } catch (err) {
+    console.error('loadAdminOverview error:', err);
+    showToast('Could not load admin overview.', 'error');
+  }
+}
+
+function renderAdminOverview(data) {
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+
+  set('kpi-total-users',   data.totalUsers);
+  set('kpi-profile-ready', data.profileReadyUsers);
+  set('kpi-new-users-week', data.newUsersThisWeek);
+  set('kpi-apps-week',     data.applicationsThisWeek);
+  set('kpi-total-apps',    data.totalApplications);
+  set('kpi-saved-jobs',    data.savedJobsTotal);
+
+  const updated = document.getElementById('admin-last-updated');
+  if (updated) updated.textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
+
+  const tbody    = document.getElementById('admin-activity-tbody');
+  const table    = document.getElementById('admin-activity-table');
+  const empty    = document.getElementById('admin-activity-empty');
+  const activity = data.recentActivity || [];
+
+  if (activity.length === 0) {
+    if (table) table.style.display = 'none';
+    if (empty) empty.style.display = 'block';
+  } else {
+    if (table) table.style.display = 'table';
+    if (empty) empty.style.display = 'none';
+    tbody.innerHTML = activity.map(row => {
+      const status = (row.status || 'APPLIED').toUpperCase();
+      const badgeClass = status === 'APPLIED' ? 'applied' : 'open';
+      return `<tr>
+        <td><strong>${escHtml(row.full_name)}</strong><br><span class="admin-table-sub">${escHtml(row.email)}</span></td>
+        <td>${escHtml(row.job_title)}</td>
+        <td>${escHtml(row.company)}</td>
+        <td><span class="status-badge status-badge--${badgeClass}">${escHtml(status)}</span></td>
+        <td>${formatDate(row.applied_at)}</td>
+      </tr>`;
+    }).join('');
+  }
 }
 
 // ---------------------------------------------------------------------------

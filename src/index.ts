@@ -10,6 +10,7 @@ import aiRouter from './routes/ai';
 import notificationsRouter from './routes/notifications';
 import authRouter from './routes/auth';
 import savedJobsRouter from './routes/savedJobs';
+import adminRouter from './routes/admin';
 // JWT_SECRET env var should be set in .env (e.g. JWT_SECRET=careerbridge-secret-2026)
 
 const app = express();
@@ -168,6 +169,7 @@ app.use('/api', aiRouter);
 app.use('/api', notificationsRouter);
 app.use('/api', authRouter);
 app.use('/api', savedJobsRouter);
+app.use('/api', adminRouter);
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);

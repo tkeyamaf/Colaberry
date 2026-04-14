@@ -52,6 +52,10 @@
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="5" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M2 14c0-3.314 2.686-6 6-6s6 2.686 6 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
             My Profile
           </a>
+          <a href="#admin" class="dropdown-item" id="admin-nav-item" data-section="admin" style="display:none">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1l1.5 3 3.5.5-2.5 2.5.5 3.5L8 9l-3 1.5.5-3.5L3 4.5 6.5 4z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+            Admin
+          </a>
           <div class="dropdown-divider"></div>
           <button class="dropdown-item dropdown-item--danger" id="btn-logout">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 8H2m0 0l3-3M2 8l3 3M6 4V2h8v12H6v-2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -833,6 +837,108 @@
         </div><!-- /dashboard-content -->
       </div>
     </section><!-- /dashboard -->
+
+    <!-- ===== ADMIN SECTION ===== -->
+    <section id="section-admin" class="section">
+      <div class="section-inner">
+
+        <!-- Gate: not admin -->
+        <div id="admin-gate" class="gate-card" style="display:none">
+          <div class="gate-icon">🔒</div>
+          <h3>Admin access required</h3>
+          <p>You do not have permission to view this page.</p>
+        </div>
+
+        <!-- Admin content -->
+        <div id="admin-content" style="display:none">
+
+          <div class="page-header">
+            <h1 class="page-title">Admin — Command Center</h1>
+            <p class="page-sub">System overview and quick access to operational controls</p>
+          </div>
+
+          <!-- KPI Cards -->
+          <div class="admin-kpi-grid" id="admin-kpi-grid">
+            <div class="admin-kpi-card">
+              <div class="admin-kpi-value" id="kpi-total-users">—</div>
+              <div class="admin-kpi-label">Total Users</div>
+            </div>
+            <div class="admin-kpi-card">
+              <div class="admin-kpi-value" id="kpi-profile-ready">—</div>
+              <div class="admin-kpi-label">Profile Ready</div>
+            </div>
+            <div class="admin-kpi-card admin-kpi-card--accent">
+              <div class="admin-kpi-value" id="kpi-new-users-week">—</div>
+              <div class="admin-kpi-label">New Users</div>
+              <div class="admin-kpi-sub">this week</div>
+            </div>
+            <div class="admin-kpi-card admin-kpi-card--accent">
+              <div class="admin-kpi-value" id="kpi-apps-week">—</div>
+              <div class="admin-kpi-label">Applications</div>
+              <div class="admin-kpi-sub">this week</div>
+            </div>
+            <div class="admin-kpi-card">
+              <div class="admin-kpi-value" id="kpi-total-apps">—</div>
+              <div class="admin-kpi-label">Total Applications</div>
+            </div>
+            <div class="admin-kpi-card">
+              <div class="admin-kpi-value" id="kpi-saved-jobs">—</div>
+              <div class="admin-kpi-label">Total Saved Jobs</div>
+            </div>
+          </div>
+
+          <!-- Quick links -->
+          <div class="admin-quick-links">
+            <div class="admin-quick-link-card" data-nav="admin-students">
+              <span class="admin-quick-icon">👤</span>
+              <span>Students</span>
+            </div>
+            <div class="admin-quick-link-card" data-nav="admin-jobs">
+              <span class="admin-quick-icon">💼</span>
+              <span>Job Pool</span>
+            </div>
+            <div class="admin-quick-link-card" data-nav="admin-exposure">
+              <span class="admin-quick-icon">📊</span>
+              <span>Company Exposure</span>
+            </div>
+            <div class="admin-quick-link-card" data-nav="admin-rules">
+              <span class="admin-quick-icon">⚙️</span>
+              <span>Allocation Rules</span>
+            </div>
+            <div class="admin-quick-link-card" data-nav="admin-overrides">
+              <span class="admin-quick-icon">🔧</span>
+              <span>Overrides</span>
+            </div>
+            <div class="admin-quick-link-card" data-nav="admin-audit">
+              <span class="admin-quick-icon">📋</span>
+              <span>Audit Log</span>
+            </div>
+          </div>
+
+          <!-- Recent Activity -->
+          <div class="dash-card">
+            <div class="dash-card-header">
+              <h2>Recent Activity</h2>
+              <span class="admin-updated" id="admin-last-updated"></span>
+            </div>
+            <div id="admin-activity-empty" style="display:none" class="empty-state">No recent activity.</div>
+            <table class="admin-table" id="admin-activity-table" style="display:none">
+              <thead>
+                <tr>
+                  <th>User</th>
+                  <th>Job</th>
+                  <th>Company</th>
+                  <th>Status</th>
+                  <th>Date</th>
+                </tr>
+              </thead>
+              <tbody id="admin-activity-tbody"></tbody>
+            </table>
+          </div>
+
+        </div><!-- /admin-content -->
+      </div>
+    </section><!-- /admin -->
 
     <!-- ===== ABOUT SECTION ===== -->
     <section id="section-about" class="section">

@@ -1709,3 +1709,128 @@ img { max-width: 100%; }
   }
   .jobs-grid { grid-template-columns: 1fr 1fr; gap: 16px; }
 }
+
+
+/* =========================================
+   ADMIN DASHBOARD
+   ========================================= */
+.admin-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.admin-kpi-card {
+  background: var(--white);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 24px 20px;
+  text-align: center;
+  box-shadow: var(--shadow-sm);
+}
+
+.admin-kpi-card--accent {
+  border-color: var(--green);
+  background: var(--green-light);
+}
+
+.admin-kpi-value {
+  font-size: 2.4rem;
+  font-weight: 700;
+  color: var(--text-dark);
+  line-height: 1;
+  margin-bottom: 6px;
+}
+
+.admin-kpi-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-mid);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.admin-kpi-sub {
+  font-size: 0.78rem;
+  color: var(--text-light);
+  margin-top: 2px;
+}
+
+.admin-quick-links {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.admin-quick-link-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--white);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--text-dark);
+  cursor: pointer;
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.admin-quick-link-card:hover {
+  border-color: var(--green);
+  box-shadow: var(--shadow-sm);
+}
+
+.admin-quick-icon {
+  font-size: 1.2rem;
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.admin-table th {
+  text-align: left;
+  padding: 10px 12px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-light);
+  border-bottom: 2px solid var(--color-border);
+}
+
+.admin-table td {
+  padding: 12px 12px;
+  border-bottom: 1px solid var(--color-border);
+  vertical-align: middle;
+  color: var(--text-dark);
+}
+
+.admin-table tr:last-child td { border-bottom: none; }
+.admin-table tr:hover td { background: var(--color-gray-bg); }
+
+.admin-table-sub {
+  font-size: 0.78rem;
+  color: var(--text-light);
+}
+
+.admin-updated {
+  font-size: 0.78rem;
+  color: var(--text-light);
+}
+
+@media (max-width: 768px) {
+  .admin-kpi-grid    { grid-template-columns: 1fr 1fr; }
+  .admin-quick-links { grid-template-columns: 1fr 1fr; }
+}
+
+@media (max-width: 480px) {
+  .admin-kpi-grid    { grid-template-columns: 1fr; }
+  .admin-quick-links { grid-template-columns: 1fr; }
+}
