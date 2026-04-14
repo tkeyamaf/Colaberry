@@ -95,12 +95,12 @@ router.post('/auth/signup', async (req: Request, res: Response) => {
     const result = await pool.query(
       `INSERT INTO users (full_name, email, password_hash, student_number)
        VALUES ($1, $2, $3, $4)
-       RETURNING id, full_name, email, student_number, profile_complete, fit_score, created_at`,
+       RETURNING id, full_name, email, student_number, profile_complete, fit_score, role, created_at`,
       [fullName, email.toLowerCase(), passwordHash, studentNumber]
     );
 
     const user = result.rows[0];
-    const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
+    const token = jwt.sign({ userId: user.id, email: user.email, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
 
     // Send welcome email (non-blocking)
     sendWelcomeEmail(user.email, user.full_name);
@@ -113,6 +113,7 @@ router.post('/auth/signup', async (req: Request, res: Response) => {
         email: user.email,
         profileComplete: user.profile_complete,
         fitScore: user.fit_score,
+        role: user.role,
       },
     });
   } catch (err) {
@@ -132,7 +133,7 @@ router.post('/auth/login', async (req: Request, res: Response) => {
 
   try {
     const result = await pool.query(
-      'SELECT id, full_name, email, password_hash, student_number, profile_complete, fit_score FROM users WHERE email = $1',
+      'SELECT id, full_name, email, password_hash, student_number, profile_complete, fit_score, role FROM users WHERE email = $1',
       [email.toLowerCase()]
     );
 
@@ -149,7 +150,7 @@ router.post('/auth/login', async (req: Request, res: Response) => {
       return;
     }
 
-    const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
+    const token = jwt.sign({ userId: user.id, email: user.email, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
 
     res.json({
       token,
@@ -159,6 +160,7 @@ router.post('/auth/login', async (req: Request, res: Response) => {
         email: user.email,
         profileComplete: user.profile_complete,
         fitScore: user.fit_score,
+        role: user.role,
       },
     });
   } catch (err) {
@@ -180,7 +182,7 @@ router.get('/auth/me', async (req: Request, res: Response) => {
     const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
 
     const result = await pool.query(
-      'SELECT id, full_name, email, student_number, profile_complete, fit_score, phone, city, state, skills, target_job_titles, job_types, summary, created_at FROM users WHERE id = $1',
+      'SELECT id, full_name, email, student_number, profile_complete, fit_score, role, phone, city, state, skills, target_job_titles, job_types, summary, created_at FROM users WHERE id = $1',
       [decoded.userId]
     );
 
@@ -196,6 +198,7 @@ router.get('/auth/me', async (req: Request, res: Response) => {
       email: user.email,
       profileComplete: user.profile_complete,
       fitScore: user.fit_score,
+      role: user.role,
       phone: user.phone,
       city: user.city,
       state: user.state,
