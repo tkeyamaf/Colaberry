@@ -13,7 +13,8 @@
     "db:migrate4": "ts-node-dev --transpile-only src/db/runMigrationV4.ts",
     "db:migrate5": "ts-node-dev --transpile-only src/db/runMigrationV5.ts",
     "db:migrate6": "ts-node-dev --transpile-only src/db/runMigrationV6.ts",
-    "db:migrate7": "ts-node-dev --transpile-only src/db/runMigrationV7.ts"
+    "db:migrate7": "ts-node-dev --transpile-only src/db/runMigrationV7.ts",
+    "db:seed-admin": "ts-node-dev --transpile-only src/db/seedAdmin.ts"
   },
   "keywords": [],
   "author": "",
