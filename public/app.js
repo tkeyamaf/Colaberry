@@ -1032,10 +1032,12 @@ function setupResumeDropZone() {
     const name = file.name.toLowerCase();
     if (file.type === 'text/plain' || name.endsWith('.txt')) {
       const reader = new FileReader();
-      reader.onload = e => {
+      reader.onload = async e => {
         const pasteEl = document.getElementById('resume-paste');
         if (pasteEl) pasteEl.value = e.target.result || '';
-        showToast('Resume loaded — click "Parse with AI" to prefill your profile.', 'info');
+        const statusEl = document.getElementById('resume-parse-status');
+        if (statusEl) statusEl.textContent = 'Parsing with AI…';
+        await parseResumeText();
       };
       reader.readAsText(file);
     } else if (name.endsWith('.pdf') || name.endsWith('.docx') || name.endsWith('.doc')) {
@@ -1049,8 +1051,8 @@ function setupResumeDropZone() {
         if (!res.ok) { showToast(data.error || 'Could not read file.', 'error'); if (statusEl) statusEl.textContent = ''; return; }
         const pasteEl = document.getElementById('resume-paste');
         if (pasteEl) pasteEl.value = data.text || '';
-        if (statusEl) statusEl.textContent = '';
-        showToast('Resume loaded — click "Parse with AI" to prefill your profile.', 'info');
+        if (statusEl) statusEl.textContent = 'Parsing with AI…';
+        await parseResumeText();
       } catch {
         showToast('Failed to read file. Try pasting your resume text instead.', 'error');
         if (statusEl) statusEl.textContent = '';
@@ -1129,13 +1131,27 @@ async function parseResumeText() {
       }
     }
 
+    // Prefill phone / city / state
+    if (data.phone) {
+      const el = document.getElementById('p-phone');
+      if (el && !el.value) el.value = data.phone;
+    }
+    if (data.city) {
+      const el = document.getElementById('p-city');
+      if (el && !el.value) el.value = data.city;
+    }
+    if (data.state) {
+      const el = document.getElementById('p-state');
+      if (el && !el.value) el.value = data.state;
+    }
+
     // Prefill summary textarea
     if (data.summary) {
       const summaryEl = document.getElementById('p-summary');
       if (summaryEl && !summaryEl.value) summaryEl.value = data.summary;
     }
 
-    if (statusEl) statusEl.textContent = '✓ Fields prefilled — review and edit before saving.';
+    if (statusEl) statusEl.textContent = '✓ Profile prefilled from your resume — review and save.';
     showToast('Resume parsed! Review the prefilled fields.', 'success');
   } catch {
     if (statusEl) statusEl.textContent = 'Network error — please try again.';

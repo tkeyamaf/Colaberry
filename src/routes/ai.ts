@@ -111,6 +111,9 @@ router.post('/ai/resume-parse', async (req: Request, res: Response) => {
 - "targetJobTitles": array of up to 3 job title strings the candidate is targeting based on their background (e.g. ["Data Analyst", "Business Analyst"])
 - "jobTypes": string — one of "Full-time", "Part-time", "Contract", "Internship", or "Freelance"; infer from context, default to "Full-time"
 - "summary": string — a 2–3 sentence professional summary derived from their experience
+- "phone": string — phone number if present, otherwise ""
+- "city": string — city of residence if present, otherwise ""
+- "state": string — US state abbreviation (e.g. "TX") if present, otherwise ""
 
 If a field cannot be determined, use [] for arrays or "" for strings. Return raw JSON only, no markdown.
 
@@ -132,6 +135,9 @@ ${resumeText.slice(0, 4000)}`;
       targetJobTitles: Array.isArray(parsed.targetJobTitles) ? parsed.targetJobTitles.map(String) : [],
       jobTypes: typeof parsed.jobTypes === 'string' ? parsed.jobTypes : 'Full-time',
       summary: typeof parsed.summary === 'string' ? parsed.summary : '',
+      phone: typeof parsed.phone === 'string' ? parsed.phone : '',
+      city: typeof parsed.city === 'string' ? parsed.city : '',
+      state: typeof parsed.state === 'string' ? parsed.state : '',
     });
   } catch (err: any) {
     console.error('Resume parse error:', err);
