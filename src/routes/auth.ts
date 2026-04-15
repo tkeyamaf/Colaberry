@@ -14,8 +14,9 @@ function generateStudentNumber(): string {
 
 async function sendWelcomeEmail(email: string, fullName: string) {
   try {
+    console.log('[email] Sending welcome email to:', email, '| API key set:', !!process.env.RESEND_API_KEY);
     const resend = new Resend(process.env.RESEND_API_KEY);
-    await resend.emails.send({
+    const sendResult = await resend.emails.send({
       from: 'CareerBridge <onboarding@resend.dev>',
       to: email,
       subject: 'Welcome to CareerBridge — Your Career Journey Starts Now',
@@ -43,6 +44,7 @@ async function sendWelcomeEmail(email: string, fullName: string) {
         </div>
       `,
     });
+    console.log('[email] Resend response:', JSON.stringify(sendResult));
   } catch (err) {
     console.error('Welcome email failed:', err);
   }
