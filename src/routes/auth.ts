@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 import pool from '../config/database';
 
 const router = Router();
@@ -12,21 +12,11 @@ function generateStudentNumber(): string {
   return `CB-${digits}`;
 }
 
-function getTransporter() {
-  return nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      user: process.env.EMAIL_FROM,
-      pass: process.env.EMAIL_APP_PASSWORD,
-    },
-  });
-}
-
 async function sendWelcomeEmail(email: string, fullName: string) {
   try {
-    const transporter = getTransporter();
-    await transporter.sendMail({
-      from: `"CareerBridge" <${process.env.EMAIL_FROM}>`,
+    const resend = new Resend(process.env.RESEND_API_KEY);
+    await resend.emails.send({
+      from: 'CareerBridge <onboarding@resend.dev>',
       to: email,
       subject: 'Welcome to CareerBridge — Your Career Journey Starts Now',
       html: `
@@ -43,13 +33,12 @@ async function sendWelcomeEmail(email: string, fullName: string) {
               <li>Complete your profile with your skills and experience</li>
               <li>Upload your resume (or use our AI Resume Builder)</li>
               <li>Browse available jobs matched to your profile</li>
-              <li>Check your eligibility before applying</li>
               <li>Track all your applications in your dashboard</li>
             </ol>
             <div style="text-align: center; margin: 30px 0;">
               <a href="https://job-allocation-system.onrender.com/#dashboard" style="background: #2d8a4e; color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px;">Go to My Dashboard</a>
             </div>
-            <p style="color: #718096; font-size: 14px; text-align: center;">Questions? Reply to this email or contact us at careerthatmatters.bridge@gmail.com</p>
+            <p style="color: #718096; font-size: 14px; text-align: center;">Questions? Contact us at careerthatmatters.bridge@gmail.com</p>
           </div>
         </div>
       `,
