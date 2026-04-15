@@ -1,7 +1,6 @@
 import { Router, Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { Resend } from 'resend';
 import pool from '../config/database';
 
 const router = Router();
@@ -12,43 +11,6 @@ function generateStudentNumber(): string {
   return `CB-${digits}`;
 }
 
-async function sendWelcomeEmail(email: string, fullName: string) {
-  try {
-    console.log('[email] Sending welcome email to:', email, '| API key set:', !!process.env.RESEND_API_KEY);
-    const resend = new Resend(process.env.RESEND_API_KEY);
-    const sendResult = await resend.emails.send({
-      from: 'CareerBridge <onboarding@resend.dev>',
-      to: email,
-      subject: 'Welcome to CareerBridge — Your Career Journey Starts Now',
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <div style="background: #2d8a4e; padding: 30px; border-radius: 12px 12px 0 0; text-align: center;">
-            <h1 style="color: white; margin: 0; font-size: 28px;">Welcome to CareerBridge</h1>
-            <p style="color: #e8f5ee; margin: 10px 0 0;">Your bridge to the career you deserve</p>
-          </div>
-          <div style="background: #f5f0e8; padding: 30px; border-radius: 0 0 12px 12px;">
-            <h2 style="color: #1a1a2e;">Hi ${fullName}! 👋</h2>
-            <p style="color: #4a5568; line-height: 1.6;">You've taken the first step toward landing a career you love. We're excited to have you on CareerBridge!</p>
-            <h3 style="color: #1a1a2e;">Your Next Steps:</h3>
-            <ol style="color: #4a5568; line-height: 2;">
-              <li>Complete your profile with your skills and experience</li>
-              <li>Upload your resume (or use our AI Resume Builder)</li>
-              <li>Browse available jobs matched to your profile</li>
-              <li>Track all your applications in your dashboard</li>
-            </ol>
-            <div style="text-align: center; margin: 30px 0;">
-              <a href="https://job-allocation-system.onrender.com/#dashboard" style="background: #2d8a4e; color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px;">Go to My Dashboard</a>
-            </div>
-            <p style="color: #718096; font-size: 14px; text-align: center;">Questions? Contact us at careerthatmatters.bridge@gmail.com</p>
-          </div>
-        </div>
-      `,
-    });
-    console.log('[email] Resend response:', JSON.stringify(sendResult));
-  } catch (err) {
-    console.error('Welcome email failed:', err);
-  }
-}
 
 // POST /api/auth/signup
 router.post('/auth/signup', async (req: Request, res: Response) => {
@@ -92,9 +54,6 @@ router.post('/auth/signup', async (req: Request, res: Response) => {
 
     const user = result.rows[0];
     const token = jwt.sign({ userId: user.id, email: user.email, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
-
-    // Send welcome email (non-blocking)
-    sendWelcomeEmail(user.email, user.full_name);
 
     res.status(201).json({
       token,
