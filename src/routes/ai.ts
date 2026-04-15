@@ -3,7 +3,8 @@ import Anthropic from '@anthropic-ai/sdk';
 import multer from 'multer';
 import mammoth from 'mammoth';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const pdfParse: (buffer: Buffer) => Promise<{ text: string }> = require('pdf-parse');
+const pdfParseModule = require('pdf-parse');
+const pdfParse: (buffer: Buffer) => Promise<{ text: string }> = pdfParseModule.default || pdfParseModule;
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
 
