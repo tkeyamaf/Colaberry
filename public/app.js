@@ -793,20 +793,30 @@ function renderDashboardGate() {
 }
 
 // ---------------------------------------------------------------------------
-// Admin Overview
+// Admin Dashboard
 // ---------------------------------------------------------------------------
 function showAdminGate() {
-  const gate    = document.getElementById('admin-gate');
-  const content = document.getElementById('admin-content');
-  if (gate)    gate.style.display    = 'block';
-  if (content) content.style.display = 'none';
+  const gate  = document.getElementById('admin-gate');
+  const shell = document.getElementById('admin-shell');
+  if (gate)  gate.style.display  = 'block';
+  if (shell) shell.style.display = 'none';
+}
+
+function switchAdminPage(name) {
+  document.querySelectorAll('.admin-page').forEach(p => p.classList.remove('admin-page--active'));
+  document.querySelectorAll('.admin-nav-item').forEach(a => a.classList.remove('admin-nav-item--active'));
+  const page = document.getElementById(`admin-page-${name}`);
+  if (page) page.classList.add('admin-page--active');
+  const navItem = document.querySelector(`.admin-nav-item[data-admin-page="${name}"]`);
+  if (navItem) navItem.classList.add('admin-nav-item--active');
 }
 
 async function loadAdminOverview() {
-  const gate    = document.getElementById('admin-gate');
-  const content = document.getElementById('admin-content');
-  if (gate)    gate.style.display    = 'none';
-  if (content) content.style.display = 'block';
+  const gate  = document.getElementById('admin-gate');
+  const shell = document.getElementById('admin-shell');
+  if (gate)  gate.style.display  = 'none';
+  if (shell) shell.style.display = 'flex';
+  switchAdminPage('overview');
 
   try {
     const res = await fetch(`${API_BASE}/api/admin/overview`, { headers: authHeaders() });
@@ -821,40 +831,106 @@ async function loadAdminOverview() {
 }
 
 function renderAdminOverview(data) {
-  const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val ?? '—'; };
 
-  set('kpi-total-users',   data.totalUsers);
-  set('kpi-profile-ready', data.profileReadyUsers);
-  set('kpi-new-users-week', data.newUsersThisWeek);
-  set('kpi-apps-week',     data.applicationsThisWeek);
-  set('kpi-total-apps',    data.totalApplications);
-  set('kpi-saved-jobs',    data.savedJobsTotal);
+  // KPI cards
+  set('kpi-active-students',    data.activeStudents);
+  set('kpi-placement-ready-sub', `${data.activeStudents ?? 0} Placement Ready`);
+  set('kpi-active-jobs',        data.activeJobs);
+  set('kpi-jobs-near-cap',      data.jobsNearCap);
+  set('kpi-companies-over',     data.companiesOverLimit);
+  set('kpi-pending-overrides',  data.pendingOverrides);
 
   const updated = document.getElementById('admin-last-updated');
   if (updated) updated.textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
 
-  const tbody    = document.getElementById('admin-activity-tbody');
-  const table    = document.getElementById('admin-activity-table');
-  const empty    = document.getElementById('admin-activity-empty');
-  const activity = data.recentActivity || [];
+  // Discovery runs
+  renderAdminTable('admin-discovery-table', 'admin-discovery-tbody', 'admin-discovery-empty',
+    data.recentDiscoveryRuns || [], row => `<tr>
+      <td>${escHtml(String(row.run_date).slice(0,10))}</td>
+      <td>${escHtml(row.jobs_found)}</td>
+      <td>${escHtml(row.jobs_normalized)}</td>
+      <td>${escHtml(row.jobs_rejected)}</td>
+      <td>${escHtml(row.duplicates)}</td>
+      <td>${escHtml(row.source_platform)}</td>
+      <td><span class="admin-status-badge admin-status-badge--${row.status === 'success' ? 'success' : 'error'}">${escHtml(row.status)}</span></td>
+    </tr>`);
 
-  if (activity.length === 0) {
-    if (table) table.style.display = 'none';
-    if (empty) empty.style.display = 'block';
-  } else {
-    if (table) table.style.display = 'table';
-    if (empty) empty.style.display = 'none';
-    tbody.innerHTML = activity.map(row => {
+  // Allocation activity
+  renderAdminTable('admin-allocation-table', 'admin-allocation-tbody', 'admin-allocation-empty',
+    data.allocationActivity || [], row => `<tr>
+      <td>${escHtml(String(row.run_date).slice(0,10))}</td>
+      <td>${escHtml(row.jobs_assigned)}</td>
+      <td>${escHtml(row.students_placed)}</td>
+      <td>${escHtml(row.failures)}</td>
+    </tr>`);
+
+  // Alerts
+  const alertsList  = document.getElementById('admin-alerts-list');
+  const alertsEmpty = document.getElementById('admin-alerts-empty');
+  const alerts = data.alerts || [];
+  if (alertsList) {
+    if (alerts.length === 0) {
+      alertsList.innerHTML = '';
+      if (alertsEmpty) alertsEmpty.style.display = 'block';
+    } else {
+      if (alertsEmpty) alertsEmpty.style.display = 'none';
+      const icons = { error: '🔴', warning: '🟡' };
+      alertsList.innerHTML = alerts.map(a => `
+        <div class="admin-alert admin-alert--${escHtml(a.level)}">
+          <span class="admin-alert-icon">${icons[a.level] || '⚠️'}</span>
+          <span>${escHtml(a.message)}</span>
+        </div>`).join('');
+    }
+  }
+
+  // Exposure risks
+  const exposureList  = document.getElementById('admin-exposure-list');
+  const exposureEmpty = document.getElementById('admin-exposure-empty');
+  const exposure = data.companyExposure || [];
+  if (exposureList) {
+    if (exposure.length === 0) {
+      exposureList.innerHTML = '';
+      if (exposureEmpty) exposureEmpty.style.display = 'block';
+    } else {
+      if (exposureEmpty) exposureEmpty.style.display = 'none';
+      exposureList.innerHTML = exposure.map(c => `
+        <div class="admin-exposure-row">
+          <div class="admin-exposure-name">${escHtml(c.company_name)}</div>
+          <div class="admin-exposure-bar-wrap">
+            <div class="admin-exposure-bar" style="width:${Math.min(Number(c.exposure_pct),100)}%"></div>
+          </div>
+          <div class="admin-exposure-pct">${escHtml(c.exposure_pct)}%</div>
+        </div>`).join('');
+    }
+  }
+
+  // Activity feed
+  renderAdminTable('admin-activity-table', 'admin-activity-tbody', 'admin-activity-empty',
+    data.recentActivity || [], row => {
       const status = (row.status || 'APPLIED').toUpperCase();
-      const badgeClass = status === 'APPLIED' ? 'applied' : 'open';
       return `<tr>
         <td><strong>${escHtml(row.full_name)}</strong><br><span class="admin-table-sub">${escHtml(row.email)}</span></td>
         <td>${escHtml(row.job_title)}</td>
         <td>${escHtml(row.company)}</td>
-        <td><span class="status-badge status-badge--${badgeClass}">${escHtml(status)}</span></td>
+        <td><span class="status-badge status-badge--applied">${escHtml(status)}</span></td>
         <td>${formatDate(row.applied_at)}</td>
       </tr>`;
-    }).join('');
+    });
+}
+
+function renderAdminTable(tableId, tbodyId, emptyId, rows, rowFn) {
+  const table = document.getElementById(tableId);
+  const tbody = document.getElementById(tbodyId);
+  const empty = document.getElementById(emptyId);
+  if (!table || !tbody) return;
+  if (rows.length === 0) {
+    table.style.display = 'none';
+    if (empty) empty.style.display = 'block';
+  } else {
+    table.style.display = 'table';
+    if (empty) empty.style.display = 'none';
+    tbody.innerHTML = rows.map(rowFn).join('');
   }
 }
 
@@ -1767,6 +1843,10 @@ function setupEventListeners() {
 
     const nav = e.target.closest('[data-nav]');
     if (nav) { e.preventDefault(); showSection(nav.dataset.nav); }
+
+    // Admin sidebar nav
+    const adminNav = e.target.closest('[data-admin-page]');
+    if (adminNav) { e.preventDefault(); switchAdminPage(adminNav.dataset.adminPage); }
   });
 
   // Modal close buttons

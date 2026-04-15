@@ -840,104 +840,214 @@
 
     <!-- ===== ADMIN SECTION ===== -->
     <section id="section-admin" class="section">
-      <div class="section-inner">
 
-        <!-- Gate: not admin -->
-        <div id="admin-gate" class="gate-card" style="display:none">
+      <!-- Gate: not admin -->
+      <div id="admin-gate" style="display:none; padding:60px 24px;">
+        <div class="gate-card">
           <div class="gate-icon">🔒</div>
           <h3>Admin access required</h3>
           <p>You do not have permission to view this page.</p>
         </div>
+      </div>
 
-        <!-- Admin content -->
-        <div id="admin-content" style="display:none">
+      <!-- Admin shell: sidebar + main -->
+      <div id="admin-shell" class="admin-shell" style="display:none">
 
-          <div class="page-header">
-            <h1 class="page-title">Admin — Command Center</h1>
-            <p class="page-sub">System overview and quick access to operational controls</p>
-          </div>
+        <!-- Sidebar -->
+        <aside class="admin-sidebar">
+          <div class="admin-sidebar-brand">Admin Panel</div>
+          <nav class="admin-nav">
+            <a class="admin-nav-item admin-nav-item--active" data-admin-page="overview">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="1" y="1" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="9" y="1" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="1" y="9" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="9" y="9" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.5"/></svg>
+              Overview
+            </a>
+            <a class="admin-nav-item" data-admin-page="discovery">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.5"/><path d="M11 11l3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+              Discovery
+            </a>
+            <a class="admin-nav-item" data-admin-page="rules">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 4h12M2 8h8M2 12h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+              Allocation Rules
+            </a>
+            <a class="admin-nav-item" data-admin-page="students">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="5" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M2 14c0-3.314 2.686-6 6-6s6 2.686 6 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+              Students
+            </a>
+            <a class="admin-nav-item" data-admin-page="jobs">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="5" width="12" height="9" rx="1" stroke="currentColor" stroke-width="1.5"/><path d="M5 5V4a3 3 0 016 0v1" stroke="currentColor" stroke-width="1.5"/></svg>
+              Job Pool
+            </a>
+            <a class="admin-nav-item" data-admin-page="exposure">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 12l4-4 3 3 5-6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              Company Exposure
+            </a>
+            <a class="admin-nav-item" data-admin-page="applications">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 3h10v10H3z" stroke="currentColor" stroke-width="1.5" rx="1"/><path d="M6 7h4M6 9.5h2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+              Applications
+            </a>
+            <a class="admin-nav-item" data-admin-page="overrides">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+              Overrides
+            </a>
+            <a class="admin-nav-item" data-admin-page="audit">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4h8M4 7h8M4 10h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+              Audit Log
+            </a>
+            <a class="admin-nav-item" data-admin-page="analytics">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 13l3-4 3 2 3-5 3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              Analytics
+            </a>
+          </nav>
+        </aside>
 
-          <!-- KPI Cards -->
-          <div class="admin-kpi-grid" id="admin-kpi-grid">
-            <div class="admin-kpi-card">
-              <div class="admin-kpi-value" id="kpi-total-users">—</div>
-              <div class="admin-kpi-label">Total Users</div>
-            </div>
-            <div class="admin-kpi-card">
-              <div class="admin-kpi-value" id="kpi-profile-ready">—</div>
-              <div class="admin-kpi-label">Profile Ready</div>
-            </div>
-            <div class="admin-kpi-card admin-kpi-card--accent">
-              <div class="admin-kpi-value" id="kpi-new-users-week">—</div>
-              <div class="admin-kpi-label">New Users</div>
-              <div class="admin-kpi-sub">this week</div>
-            </div>
-            <div class="admin-kpi-card admin-kpi-card--accent">
-              <div class="admin-kpi-value" id="kpi-apps-week">—</div>
-              <div class="admin-kpi-label">Applications</div>
-              <div class="admin-kpi-sub">this week</div>
-            </div>
-            <div class="admin-kpi-card">
-              <div class="admin-kpi-value" id="kpi-total-apps">—</div>
-              <div class="admin-kpi-label">Total Applications</div>
-            </div>
-            <div class="admin-kpi-card">
-              <div class="admin-kpi-value" id="kpi-saved-jobs">—</div>
-              <div class="admin-kpi-label">Total Saved Jobs</div>
-            </div>
-          </div>
+        <!-- Main content area -->
+        <div class="admin-main">
 
-          <!-- Quick links -->
-          <div class="admin-quick-links">
-            <div class="admin-quick-link-card" data-nav="admin-students">
-              <span class="admin-quick-icon">👤</span>
-              <span>Students</span>
-            </div>
-            <div class="admin-quick-link-card" data-nav="admin-jobs">
-              <span class="admin-quick-icon">💼</span>
-              <span>Job Pool</span>
-            </div>
-            <div class="admin-quick-link-card" data-nav="admin-exposure">
-              <span class="admin-quick-icon">📊</span>
-              <span>Company Exposure</span>
-            </div>
-            <div class="admin-quick-link-card" data-nav="admin-rules">
-              <span class="admin-quick-icon">⚙️</span>
-              <span>Allocation Rules</span>
-            </div>
-            <div class="admin-quick-link-card" data-nav="admin-overrides">
-              <span class="admin-quick-icon">🔧</span>
-              <span>Overrides</span>
-            </div>
-            <div class="admin-quick-link-card" data-nav="admin-audit">
-              <span class="admin-quick-icon">📋</span>
-              <span>Audit Log</span>
-            </div>
-          </div>
+          <!-- ── Overview page ── -->
+          <div id="admin-page-overview" class="admin-page admin-page--active">
 
-          <!-- Recent Activity -->
-          <div class="dash-card">
-            <div class="dash-card-header">
-              <h2>Recent Activity</h2>
+            <div class="admin-page-header">
+              <div>
+                <h1 class="admin-page-title">Admin — Command Center</h1>
+                <p class="admin-page-sub">System overview and quick access to operational controls</p>
+              </div>
               <span class="admin-updated" id="admin-last-updated"></span>
             </div>
-            <div id="admin-activity-empty" style="display:none" class="empty-state">No recent activity.</div>
-            <table class="admin-table" id="admin-activity-table" style="display:none">
-              <thead>
-                <tr>
-                  <th>User</th>
-                  <th>Job</th>
-                  <th>Company</th>
-                  <th>Status</th>
-                  <th>Date</th>
-                </tr>
-              </thead>
-              <tbody id="admin-activity-tbody"></tbody>
-            </table>
-          </div>
 
-        </div><!-- /admin-content -->
-      </div>
+            <!-- KPI row -->
+            <div class="admin-kpi-row">
+              <div class="admin-kpi-card admin-kpi-card--green">
+                <div class="admin-kpi-icon">
+                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="6" r="4" stroke="white" stroke-width="1.5"/><path d="M3 18c0-3.866 3.134-7 7-7s7 3.134 7 7" stroke="white" stroke-width="1.5" stroke-linecap="round"/></svg>
+                </div>
+                <div class="admin-kpi-body">
+                  <div class="admin-kpi-value" id="kpi-active-students">—</div>
+                  <div class="admin-kpi-label">Active Students</div>
+                  <div class="admin-kpi-sub" id="kpi-placement-ready-sub">— Placement Ready</div>
+                </div>
+              </div>
+              <div class="admin-kpi-card admin-kpi-card--green">
+                <div class="admin-kpi-icon">
+                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="3" y="7" width="14" height="11" rx="1" stroke="white" stroke-width="1.5"/><path d="M7 7V5a3 3 0 016 0v2" stroke="white" stroke-width="1.5"/></svg>
+                </div>
+                <div class="admin-kpi-body">
+                  <div class="admin-kpi-value" id="kpi-active-jobs">—</div>
+                  <div class="admin-kpi-label">Active Jobs</div>
+                </div>
+              </div>
+              <div class="admin-kpi-card admin-kpi-card--orange">
+                <div class="admin-kpi-icon">
+                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 3l7 14H3L10 3z" stroke="white" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4M10 14v1" stroke="white" stroke-width="1.5" stroke-linecap="round"/></svg>
+                </div>
+                <div class="admin-kpi-body">
+                  <div class="admin-kpi-value" id="kpi-jobs-near-cap">—</div>
+                  <div class="admin-kpi-label">Jobs Near Cap</div>
+                  <div class="admin-kpi-sub">≥ 9 of 12 weekly</div>
+                </div>
+              </div>
+              <div class="admin-kpi-card admin-kpi-card--red">
+                <div class="admin-kpi-icon">
+                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7" stroke="white" stroke-width="1.5"/><path d="M10 7v4M10 13v1" stroke="white" stroke-width="1.5" stroke-linecap="round"/></svg>
+                </div>
+                <div class="admin-kpi-body">
+                  <div class="admin-kpi-value" id="kpi-companies-over">—</div>
+                  <div class="admin-kpi-label">Companies Over Limit</div>
+                  <div class="admin-kpi-sub">≥ 25 of 30 weekly</div>
+                </div>
+              </div>
+              <div class="admin-kpi-card admin-kpi-card--dark">
+                <div class="admin-kpi-icon">
+                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 4v8M6 9l4 4 4-4" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </div>
+                <div class="admin-kpi-body">
+                  <div class="admin-kpi-value" id="kpi-pending-overrides">—</div>
+                  <div class="admin-kpi-label">Pending Overrides</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Two-column content area -->
+            <div class="admin-content-grid">
+
+              <!-- Left: tables + alerts + activity -->
+              <div class="admin-col-main">
+
+                <!-- Recent Discovery Runs -->
+                <div class="admin-card">
+                  <div class="admin-card-header">
+                    <h2 class="admin-card-title">Recent Discovery Runs</h2>
+                  </div>
+                  <div id="admin-discovery-empty" class="admin-empty">No discovery runs recorded yet.</div>
+                  <table class="admin-table" id="admin-discovery-table" style="display:none">
+                    <thead><tr><th>Date</th><th>Jobs Found</th><th>Normalized</th><th>Rejected</th><th>Duplicates</th><th>Source</th><th>Status</th></tr></thead>
+                    <tbody id="admin-discovery-tbody"></tbody>
+                  </table>
+                </div>
+
+                <!-- Recent Allocation Activity -->
+                <div class="admin-card">
+                  <div class="admin-card-header">
+                    <h2 class="admin-card-title">Recent Allocation Activity</h2>
+                  </div>
+                  <div id="admin-allocation-empty" class="admin-empty">No allocation activity yet.</div>
+                  <table class="admin-table" id="admin-allocation-table" style="display:none">
+                    <thead><tr><th>Date</th><th>Jobs Assigned</th><th>Students Placed</th><th>Failures</th></tr></thead>
+                    <tbody id="admin-allocation-tbody"></tbody>
+                  </table>
+                </div>
+
+                <!-- Alerts -->
+                <div class="admin-card" id="admin-alerts-card">
+                  <div class="admin-card-header">
+                    <h2 class="admin-card-title">Alerts &amp; Warnings</h2>
+                  </div>
+                  <div id="admin-alerts-empty" class="admin-empty" style="display:none">No active alerts.</div>
+                  <div id="admin-alerts-list"></div>
+                </div>
+
+                <!-- Activity Feed -->
+                <div class="admin-card">
+                  <div class="admin-card-header">
+                    <h2 class="admin-card-title">Activity Feed</h2>
+                  </div>
+                  <div id="admin-activity-empty" class="admin-empty" style="display:none">No recent activity.</div>
+                  <table class="admin-table" id="admin-activity-table" style="display:none">
+                    <thead><tr><th>User</th><th>Job</th><th>Company</th><th>Status</th><th>Date</th></tr></thead>
+                    <tbody id="admin-activity-tbody"></tbody>
+                  </table>
+                </div>
+
+              </div><!-- /admin-col-main -->
+
+              <!-- Right: exposure risks -->
+              <div class="admin-col-side">
+                <div class="admin-card">
+                  <div class="admin-card-header">
+                    <h2 class="admin-card-title">Exposure Risks</h2>
+                    <span class="admin-card-sub">Companies Over Weekly Cap</span>
+                  </div>
+                  <div id="admin-exposure-empty" class="admin-empty">No exposure data this week.</div>
+                  <div id="admin-exposure-list"></div>
+                </div>
+              </div>
+
+            </div><!-- /admin-content-grid -->
+          </div><!-- /admin-page-overview -->
+
+          <!-- Coming soon pages -->
+          <div id="admin-page-discovery"    class="admin-page"><div class="admin-coming-soon"><span>🔍</span><p>Discovery — Coming Soon</p></div></div>
+          <div id="admin-page-rules"        class="admin-page"><div class="admin-coming-soon"><span>⚙️</span><p>Allocation Rules — Coming Soon</p></div></div>
+          <div id="admin-page-students"     class="admin-page"><div class="admin-coming-soon"><span>👤</span><p>Students — Coming Soon</p></div></div>
+          <div id="admin-page-jobs"         class="admin-page"><div class="admin-coming-soon"><span>💼</span><p>Job Pool — Coming Soon</p></div></div>
+          <div id="admin-page-exposure"     class="admin-page"><div class="admin-coming-soon"><span>📊</span><p>Company Exposure — Coming Soon</p></div></div>
+          <div id="admin-page-applications" class="admin-page"><div class="admin-coming-soon"><span>📄</span><p>Applications — Coming Soon</p></div></div>
+          <div id="admin-page-overrides"    class="admin-page"><div class="admin-coming-soon"><span>🔧</span><p>Overrides — Coming Soon</p></div></div>
+          <div id="admin-page-audit"        class="admin-page"><div class="admin-coming-soon"><span>📋</span><p>Audit Log — Coming Soon</p></div></div>
+          <div id="admin-page-analytics"    class="admin-page"><div class="admin-coming-soon"><span>📈</span><p>Analytics — Coming Soon</p></div></div>
+
+        </div><!-- /admin-main -->
+      </div><!-- /admin-shell -->
+
     </section><!-- /admin -->
 
     <!-- ===== ABOUT SECTION ===== -->
