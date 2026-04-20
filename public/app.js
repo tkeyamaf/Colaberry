@@ -809,6 +809,12 @@ function switchAdminPage(name) {
   if (page) page.classList.add('admin-page--active');
   const navItem = document.querySelector(`.admin-nav-item[data-admin-page="${name}"]`);
   if (navItem) navItem.classList.add('admin-nav-item--active');
+
+  if (name === 'students')     loadAdminStudents();
+  if (name === 'jobs')         loadAdminJobs();
+  if (name === 'applications') loadAdminApplications();
+  if (name === 'exposure')     loadAdminCompanies();
+  if (name === 'discovery')    loadAdminDiscovery();
 }
 
 async function loadAdminOverview() {
@@ -834,9 +840,12 @@ function renderAdminOverview(data) {
   const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val ?? '—'; };
 
   // KPI cards
+  set('kpi-total-users',        data.totalUsers);
+  set('kpi-new-users-sub',      `${data.newUsersThisWeek ?? 0} new this week`);
   set('kpi-active-students',    data.activeStudents);
   set('kpi-placement-ready-sub', `${data.activeStudents ?? 0} Placement Ready`);
   set('kpi-active-jobs',        data.activeJobs);
+  set('kpi-apps-week-sub',      `${data.applicationsThisWeek ?? 0} applications this week`);
   set('kpi-jobs-near-cap',      data.jobsNearCap);
   set('kpi-companies-over',     data.companiesOverLimit);
   set('kpi-pending-overrides',  data.pendingOverrides);
@@ -917,6 +926,148 @@ function renderAdminOverview(data) {
         <td>${formatDate(row.applied_at)}</td>
       </tr>`;
     });
+}
+
+// ---------------------------------------------------------------------------
+// Admin page loaders
+// ---------------------------------------------------------------------------
+async function loadAdminStudents() {
+  try {
+    const res  = await fetch(`${API_BASE}/api/admin/students`, { headers: authHeaders() });
+    const data = await res.json();
+    if (!res.ok) { showToast(data.error || 'Could not load students.', 'error'); return; }
+    const allRows = data.students || [];
+
+    function render(rows) {
+      renderAdminTable('admin-students-table', 'admin-students-tbody', 'admin-students-empty', rows, row => `<tr>
+        <td><strong>${escHtml(row.full_name)}</strong></td>
+        <td><span class="admin-table-sub">${escHtml(row.email)}</span></td>
+        <td>${escHtml(row.student_number || '—')}</td>
+        <td>${row.fit_score ?? '—'}</td>
+        <td><span class="admin-status-badge admin-status-badge--${row.profile_complete ? 'success' : 'error'}">${row.profile_complete ? 'Complete' : 'Incomplete'}</span></td>
+        <td>${escHtml([row.city, row.state].filter(Boolean).join(', ') || '—')}</td>
+        <td>${formatDate(row.created_at)}</td>
+      </tr>`);
+    }
+
+    render(allRows);
+    const searchEl = document.getElementById('admin-students-search');
+    if (searchEl) {
+      searchEl.oninput = () => {
+        const q = searchEl.value.toLowerCase();
+        render(q ? allRows.filter(r => (r.full_name + r.email).toLowerCase().includes(q)) : allRows);
+      };
+    }
+  } catch (err) { console.error('loadAdminStudents error:', err); }
+}
+
+async function loadAdminJobs() {
+  try {
+    const res  = await fetch(`${API_BASE}/api/admin/jobs`, { headers: authHeaders() });
+    const data = await res.json();
+    if (!res.ok) { showToast(data.error || 'Could not load jobs.', 'error'); return; }
+    const allRows = data.jobs || [];
+
+    function render(rows) {
+      renderAdminTable('admin-jobs-table', 'admin-jobs-tbody', 'admin-jobs-empty', rows, row => `<tr>
+        <td><strong>${escHtml(row.title)}</strong></td>
+        <td>${escHtml(row.company)}</td>
+        <td>${escHtml(row.location || '—')}</td>
+        <td><span class="admin-status-badge admin-status-badge--${row.status === 'OPEN' ? 'success' : 'error'}">${escHtml(row.status)}</span></td>
+        <td>${escHtml(row.weekly_allocations ?? 0)}</td>
+        <td>${escHtml(row.total_allocations ?? 0)}</td>
+        <td>${formatDate(row.created_at)}</td>
+      </tr>`);
+    }
+
+    render(allRows);
+    const searchEl = document.getElementById('admin-jobs-search');
+    if (searchEl) {
+      searchEl.oninput = () => {
+        const q = searchEl.value.toLowerCase();
+        render(q ? allRows.filter(r => (r.title + r.company).toLowerCase().includes(q)) : allRows);
+      };
+    }
+  } catch (err) { console.error('loadAdminJobs error:', err); }
+}
+
+async function loadAdminApplications() {
+  try {
+    const res  = await fetch(`${API_BASE}/api/admin/applications`, { headers: authHeaders() });
+    const data = await res.json();
+    if (!res.ok) { showToast(data.error || 'Could not load applications.', 'error'); return; }
+    const allRows = data.applications || [];
+
+    const statusColor = s => ({ APPLIED: 'info', INTERVIEWING: 'warning', OFFERED: 'success', REJECTED: 'error', WITHDRAWN: 'error' }[s] || 'info');
+
+    function render(rows) {
+      renderAdminTable('admin-apps-table', 'admin-apps-tbody', 'admin-apps-empty', rows, row => {
+        const s = (row.status || 'APPLIED').toUpperCase();
+        return `<tr>
+          <td><strong>${escHtml(row.full_name)}</strong><br><span class="admin-table-sub">${escHtml(row.email)}</span></td>
+          <td>${escHtml(row.job_title)}</td>
+          <td>${escHtml(row.company)}</td>
+          <td>${row.fit_score ?? '—'}</td>
+          <td><span class="admin-status-badge admin-status-badge--${statusColor(s)}">${escHtml(s)}</span></td>
+          <td>${formatDate(row.applied_at)}</td>
+        </tr>`;
+      });
+    }
+
+    render(allRows);
+    const searchEl = document.getElementById('admin-apps-search');
+    if (searchEl) {
+      searchEl.oninput = () => {
+        const q = searchEl.value.toLowerCase();
+        render(q ? allRows.filter(r => (r.full_name + r.job_title + r.company).toLowerCase().includes(q)) : allRows);
+      };
+    }
+  } catch (err) { console.error('loadAdminApplications error:', err); }
+}
+
+async function loadAdminCompanies() {
+  try {
+    const res  = await fetch(`${API_BASE}/api/admin/companies`, { headers: authHeaders() });
+    const data = await res.json();
+    if (!res.ok) { showToast(data.error || 'Could not load companies.', 'error'); return; }
+    const rows = data.companies || [];
+    const cap  = data.companyCap || 30;
+
+    renderAdminTable('admin-companies-table', 'admin-companies-tbody', 'admin-companies-empty', rows, row => {
+      const pct    = Math.min(Number(row.exposure_pct) || 0, 100);
+      const status = pct >= 100 ? 'error' : pct >= 75 ? 'warning' : 'success';
+      const label  = pct >= 100 ? 'Over Cap' : pct >= 75 ? 'Near Cap' : 'OK';
+      return `<tr>
+        <td><strong>${escHtml(row.name)}</strong></td>
+        <td>${escHtml(row.weekly_count ?? 0)} / ${cap}</td>
+        <td>${escHtml(row.total_allocations ?? 0)}</td>
+        <td>
+          <div class="admin-exposure-bar-wrap" style="width:140px">
+            <div class="admin-exposure-bar" style="width:${pct}%"></div>
+          </div>
+          <span class="admin-table-sub">${pct}%</span>
+        </td>
+        <td><span class="admin-status-badge admin-status-badge--${status}">${label}</span></td>
+      </tr>`;
+    });
+  } catch (err) { console.error('loadAdminCompanies error:', err); }
+}
+
+async function loadAdminDiscovery() {
+  try {
+    const res  = await fetch(`${API_BASE}/api/admin/discovery`, { headers: authHeaders() });
+    const data = await res.json();
+    if (!res.ok) { showToast(data.error || 'Could not load discovery runs.', 'error'); return; }
+    renderAdminTable('admin-disc-table', 'admin-disc-tbody', 'admin-disc-empty', data.runs || [], row => `<tr>
+      <td>${escHtml(String(row.run_date).slice(0,10))}</td>
+      <td>${escHtml(row.jobs_found ?? 0)}</td>
+      <td>${escHtml(row.jobs_normalized ?? 0)}</td>
+      <td>${escHtml(row.jobs_rejected ?? 0)}</td>
+      <td>${escHtml(row.duplicates ?? 0)}</td>
+      <td>${escHtml(row.source_platform || '—')}</td>
+      <td><span class="admin-status-badge admin-status-badge--${row.status === 'success' ? 'success' : 'error'}">${escHtml(row.status)}</span></td>
+    </tr>`);
+  } catch (err) { console.error('loadAdminDiscovery error:', err); }
 }
 
 function renderAdminTable(tableId, tbodyId, emptyId, rows, rowFn) {

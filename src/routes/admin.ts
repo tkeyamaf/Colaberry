@@ -143,4 +143,102 @@ router.get('/admin/overview', requireAdmin, async (_req: AuthenticatedRequest, r
   }
 });
 
+// GET /api/admin/students
+router.get('/admin/students', requireAdmin, async (_req: AuthenticatedRequest, res: Response) => {
+  try {
+    const result = await pool.query(`
+      SELECT id, full_name, email, student_number, profile_complete, fit_score,
+             city, state, skills, target_job_titles, created_at
+      FROM users
+      WHERE role = 'user'
+      ORDER BY created_at DESC
+      LIMIT 500
+    `);
+    res.json({ students: result.rows });
+  } catch (err) {
+    console.error('Admin students error:', err);
+    res.status(500).json({ error: 'Failed to load students' });
+  }
+});
+
+// GET /api/admin/jobs
+router.get('/admin/jobs', requireAdmin, async (_req: AuthenticatedRequest, res: Response) => {
+  try {
+    const result = await pool.query(`
+      SELECT j.id, j.title, j.company, j.location, j.status, j.created_at, j.updated_at,
+             COUNT(al.id) FILTER (WHERE al.allocated_at > now() - interval '7 days') AS weekly_allocations,
+             COUNT(al.id) AS total_allocations
+      FROM jobs j
+      LEFT JOIN allocation_ledger al ON al.job_id = j.id
+      GROUP BY j.id
+      ORDER BY j.created_at DESC
+      LIMIT 500
+    `);
+    res.json({ jobs: result.rows });
+  } catch (err) {
+    console.error('Admin jobs error:', err);
+    res.status(500).json({ error: 'Failed to load jobs' });
+  }
+});
+
+// GET /api/admin/applications
+router.get('/admin/applications', requireAdmin, async (_req: AuthenticatedRequest, res: Response) => {
+  try {
+    const result = await pool.query(`
+      SELECT ja.id, ja.job_title, ja.company, ja.status, ja.applied_at,
+             u.full_name, u.email, u.student_number, u.fit_score
+      FROM job_applications ja
+      JOIN users u ON u.id = ja.user_id
+      ORDER BY ja.applied_at DESC
+      LIMIT 500
+    `);
+    res.json({ applications: result.rows });
+  } catch (err) {
+    console.error('Admin applications error:', err);
+    res.status(500).json({ error: 'Failed to load applications' });
+  }
+});
+
+// GET /api/admin/companies
+router.get('/admin/companies', requireAdmin, async (_req: AuthenticatedRequest, res: Response) => {
+  try {
+    const result = await pool.query(`
+      SELECT
+        c.id, c.name,
+        COUNT(DISTINCT al.job_id)                                                               AS total_jobs,
+        COUNT(al.id) FILTER (WHERE al.allocated_at > now() - interval '7 days')                AS weekly_count,
+        COUNT(al.id)                                                                            AS total_allocations,
+        LEAST(ROUND(
+          COUNT(al.id) FILTER (WHERE al.allocated_at > now() - interval '7 days')::numeric
+          / $1 * 100
+        ), 100)                                                                                 AS exposure_pct
+      FROM companies c
+      LEFT JOIN allocation_ledger al ON al.company_id = c.id
+      GROUP BY c.id, c.name
+      ORDER BY weekly_count DESC, c.name
+    `, [COMPANY_CAP]);
+    res.json({ companies: result.rows, companyCap: COMPANY_CAP });
+  } catch (err) {
+    console.error('Admin companies error:', err);
+    res.status(500).json({ error: 'Failed to load companies' });
+  }
+});
+
+// GET /api/admin/discovery
+router.get('/admin/discovery', requireAdmin, async (_req: AuthenticatedRequest, res: Response) => {
+  try {
+    const result = await pool.query(`
+      SELECT run_date, jobs_found, jobs_normalized, jobs_rejected, duplicates,
+             source_platform, status, created_at
+      FROM discovery_runs
+      ORDER BY created_at DESC
+      LIMIT 100
+    `);
+    res.json({ runs: result.rows });
+  } catch (err) {
+    console.error('Admin discovery error:', err);
+    res.status(500).json({ error: 'Failed to load discovery runs' });
+  }
+});
+
 export default router;

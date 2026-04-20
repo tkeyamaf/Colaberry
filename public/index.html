@@ -916,13 +916,23 @@
 
             <!-- KPI row -->
             <div class="admin-kpi-row">
+              <div class="admin-kpi-card admin-kpi-card--blue">
+                <div class="admin-kpi-icon">
+                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="6" r="4" stroke="white" stroke-width="1.5"/><path d="M3 18c0-3.866 3.134-7 7-7s7 3.134 7 7" stroke="white" stroke-width="1.5" stroke-linecap="round"/></svg>
+                </div>
+                <div class="admin-kpi-body">
+                  <div class="admin-kpi-value" id="kpi-total-users">—</div>
+                  <div class="admin-kpi-label">Total Users</div>
+                  <div class="admin-kpi-sub" id="kpi-new-users-sub">— new this week</div>
+                </div>
+              </div>
               <div class="admin-kpi-card admin-kpi-card--green">
                 <div class="admin-kpi-icon">
                   <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="6" r="4" stroke="white" stroke-width="1.5"/><path d="M3 18c0-3.866 3.134-7 7-7s7 3.134 7 7" stroke="white" stroke-width="1.5" stroke-linecap="round"/></svg>
                 </div>
                 <div class="admin-kpi-body">
                   <div class="admin-kpi-value" id="kpi-active-students">—</div>
-                  <div class="admin-kpi-label">Active Students</div>
+                  <div class="admin-kpi-label">Profile Complete</div>
                   <div class="admin-kpi-sub" id="kpi-placement-ready-sub">— Placement Ready</div>
                 </div>
               </div>
@@ -933,6 +943,7 @@
                 <div class="admin-kpi-body">
                   <div class="admin-kpi-value" id="kpi-active-jobs">—</div>
                   <div class="admin-kpi-label">Active Jobs</div>
+                  <div class="admin-kpi-sub" id="kpi-apps-week-sub">— applications this week</div>
                 </div>
               </div>
               <div class="admin-kpi-card admin-kpi-card--orange">
@@ -1034,13 +1045,105 @@
             </div><!-- /admin-content-grid -->
           </div><!-- /admin-page-overview -->
 
-          <!-- Coming soon pages -->
-          <div id="admin-page-discovery"    class="admin-page"><div class="admin-coming-soon"><span>🔍</span><p>Discovery — Coming Soon</p></div></div>
-          <div id="admin-page-rules"        class="admin-page"><div class="admin-coming-soon"><span>⚙️</span><p>Allocation Rules — Coming Soon</p></div></div>
-          <div id="admin-page-students"     class="admin-page"><div class="admin-coming-soon"><span>👤</span><p>Students — Coming Soon</p></div></div>
-          <div id="admin-page-jobs"         class="admin-page"><div class="admin-coming-soon"><span>💼</span><p>Job Pool — Coming Soon</p></div></div>
-          <div id="admin-page-exposure"     class="admin-page"><div class="admin-coming-soon"><span>📊</span><p>Company Exposure — Coming Soon</p></div></div>
-          <div id="admin-page-applications" class="admin-page"><div class="admin-coming-soon"><span>📄</span><p>Applications — Coming Soon</p></div></div>
+          <!-- ── Discovery page ── -->
+          <div id="admin-page-discovery" class="admin-page">
+            <div class="admin-page-header">
+              <div><h1 class="admin-page-title">Discovery Runs</h1><p class="admin-page-sub">Job discovery history and pipeline stats</p></div>
+            </div>
+            <div class="admin-card">
+              <div id="admin-disc-empty" class="admin-empty">No discovery runs recorded yet.</div>
+              <table class="admin-table" id="admin-disc-table" style="display:none">
+                <thead><tr><th>Date</th><th>Jobs Found</th><th>Normalized</th><th>Rejected</th><th>Duplicates</th><th>Source</th><th>Status</th></tr></thead>
+                <tbody id="admin-disc-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- ── Allocation Rules page ── -->
+          <div id="admin-page-rules" class="admin-page">
+            <div class="admin-page-header">
+              <div><h1 class="admin-page-title">Allocation Rules</h1><p class="admin-page-sub">Current system caps and thresholds</p></div>
+            </div>
+            <div class="admin-kpi-row" style="margin-bottom:24px">
+              <div class="admin-kpi-card admin-kpi-card--blue">
+                <div class="admin-kpi-body"><div class="admin-kpi-value">12</div><div class="admin-kpi-label">Job Weekly Cap</div><div class="admin-kpi-sub">Max candidates per job/week</div></div>
+              </div>
+              <div class="admin-kpi-card admin-kpi-card--blue">
+                <div class="admin-kpi-body"><div class="admin-kpi-value">30</div><div class="admin-kpi-label">Company Weekly Cap</div><div class="admin-kpi-sub">Max candidates per company/week</div></div>
+              </div>
+              <div class="admin-kpi-card admin-kpi-card--orange">
+                <div class="admin-kpi-body"><div class="admin-kpi-value">9</div><div class="admin-kpi-label">Near-Cap Threshold</div><div class="admin-kpi-sub">Alert triggers at this count</div></div>
+              </div>
+              <div class="admin-kpi-card admin-kpi-card--orange">
+                <div class="admin-kpi-body"><div class="admin-kpi-value">5</div><div class="admin-kpi-label">Student Weekly Cap</div><div class="admin-kpi-sub">Max applications per student/week</div></div>
+              </div>
+              <div class="admin-kpi-card admin-kpi-card--green">
+                <div class="admin-kpi-body"><div class="admin-kpi-value">60</div><div class="admin-kpi-label">Min Fit Score</div><div class="admin-kpi-sub">Minimum score to qualify</div></div>
+              </div>
+            </div>
+            <div class="admin-card"><p class="admin-empty" style="display:block">Rule editing coming in a future update.</p></div>
+          </div>
+
+          <!-- ── Students page ── -->
+          <div id="admin-page-students" class="admin-page">
+            <div class="admin-page-header">
+              <div><h1 class="admin-page-title">Students</h1><p class="admin-page-sub">All registered users</p></div>
+              <input type="text" id="admin-students-search" class="admin-search-input" placeholder="Search by name or email…" />
+            </div>
+            <div class="admin-card">
+              <div id="admin-students-empty" class="admin-empty">No students found.</div>
+              <table class="admin-table" id="admin-students-table" style="display:none">
+                <thead><tr><th>Name</th><th>Email</th><th>Student #</th><th>Fit Score</th><th>Profile</th><th>Location</th><th>Joined</th></tr></thead>
+                <tbody id="admin-students-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- ── Job Pool page ── -->
+          <div id="admin-page-jobs" class="admin-page">
+            <div class="admin-page-header">
+              <div><h1 class="admin-page-title">Job Pool</h1><p class="admin-page-sub">All jobs and allocation counts</p></div>
+              <input type="text" id="admin-jobs-search" class="admin-search-input" placeholder="Search by title or company…" />
+            </div>
+            <div class="admin-card">
+              <div id="admin-jobs-empty" class="admin-empty">No jobs found.</div>
+              <table class="admin-table" id="admin-jobs-table" style="display:none">
+                <thead><tr><th>Title</th><th>Company</th><th>Location</th><th>Status</th><th>This Week</th><th>Total</th><th>Posted</th></tr></thead>
+                <tbody id="admin-jobs-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- ── Company Exposure page ── -->
+          <div id="admin-page-exposure" class="admin-page">
+            <div class="admin-page-header">
+              <div><h1 class="admin-page-title">Company Exposure</h1><p class="admin-page-sub">Weekly allocation counts vs company cap (30/week)</p></div>
+            </div>
+            <div class="admin-card">
+              <div id="admin-companies-empty" class="admin-empty">No company data yet.</div>
+              <table class="admin-table" id="admin-companies-table" style="display:none">
+                <thead><tr><th>Company</th><th>This Week</th><th>Total</th><th>Exposure</th><th>Status</th></tr></thead>
+                <tbody id="admin-companies-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- ── Applications page ── -->
+          <div id="admin-page-applications" class="admin-page">
+            <div class="admin-page-header">
+              <div><h1 class="admin-page-title">Applications</h1><p class="admin-page-sub">All student job applications</p></div>
+              <input type="text" id="admin-apps-search" class="admin-search-input" placeholder="Search by student or job…" />
+            </div>
+            <div class="admin-card">
+              <div id="admin-apps-empty" class="admin-empty">No applications yet.</div>
+              <table class="admin-table" id="admin-apps-table" style="display:none">
+                <thead><tr><th>Student</th><th>Job</th><th>Company</th><th>Fit Score</th><th>Status</th><th>Applied</th></tr></thead>
+                <tbody id="admin-apps-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- ── Overrides / Audit / Analytics (coming soon) ── -->
           <div id="admin-page-overrides"    class="admin-page"><div class="admin-coming-soon"><span>🔧</span><p>Overrides — Coming Soon</p></div></div>
           <div id="admin-page-audit"        class="admin-page"><div class="admin-coming-soon"><span>📋</span><p>Audit Log — Coming Soon</p></div></div>
           <div id="admin-page-analytics"    class="admin-page"><div class="admin-coming-soon"><span>📈</span><p>Analytics — Coming Soon</p></div></div>
