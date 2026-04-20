@@ -1088,12 +1088,15 @@
           <div id="admin-page-students" class="admin-page">
             <div class="admin-page-header">
               <div><h1 class="admin-page-title">Students</h1><p class="admin-page-sub">All registered users</p></div>
-              <input type="text" id="admin-students-search" class="admin-search-input" placeholder="Search by name or email…" />
+              <div class="admin-page-controls">
+                <input type="text" id="admin-students-search" class="admin-search-input" placeholder="Search by name or email…" />
+                <button class="admin-export-btn" onclick="exportStudentsCSV()">Export CSV</button>
+              </div>
             </div>
             <div class="admin-card">
               <div id="admin-students-empty" class="admin-empty">No students found.</div>
               <table class="admin-table" id="admin-students-table" style="display:none">
-                <thead><tr><th>Name</th><th>Email</th><th>Student #</th><th>Fit Score</th><th>Profile</th><th>Location</th><th>Joined</th></tr></thead>
+                <thead><tr><th>Name</th><th>Email</th><th>Student #</th><th>Fit Score</th><th>Profile</th><th>Location</th><th>Joined</th><th>Role</th></tr></thead>
                 <tbody id="admin-students-tbody"></tbody>
               </table>
             </div>
@@ -1103,12 +1106,15 @@
           <div id="admin-page-jobs" class="admin-page">
             <div class="admin-page-header">
               <div><h1 class="admin-page-title">Job Pool</h1><p class="admin-page-sub">All jobs and allocation counts</p></div>
-              <input type="text" id="admin-jobs-search" class="admin-search-input" placeholder="Search by title or company…" />
+              <div class="admin-page-controls">
+                <input type="text" id="admin-jobs-search" class="admin-search-input" placeholder="Search by title or company…" />
+                <button class="admin-export-btn" onclick="exportJobsCSV()">Export CSV</button>
+              </div>
             </div>
             <div class="admin-card">
               <div id="admin-jobs-empty" class="admin-empty">No jobs found.</div>
               <table class="admin-table" id="admin-jobs-table" style="display:none">
-                <thead><tr><th>Title</th><th>Company</th><th>Location</th><th>Status</th><th>This Week</th><th>Total</th><th>Posted</th></tr></thead>
+                <thead><tr><th>Title</th><th>Company</th><th>Location</th><th>Status</th><th>This Week</th><th>Total</th><th>Posted</th><th>Actions</th></tr></thead>
                 <tbody id="admin-jobs-tbody"></tbody>
               </table>
             </div>
@@ -1132,12 +1138,15 @@
           <div id="admin-page-applications" class="admin-page">
             <div class="admin-page-header">
               <div><h1 class="admin-page-title">Applications</h1><p class="admin-page-sub">All student job applications</p></div>
-              <input type="text" id="admin-apps-search" class="admin-search-input" placeholder="Search by student or job…" />
+              <div class="admin-page-controls">
+                <input type="text" id="admin-apps-search" class="admin-search-input" placeholder="Search by student or job…" />
+                <button class="admin-export-btn" onclick="exportAppsCSV()">Export CSV</button>
+              </div>
             </div>
             <div class="admin-card">
               <div id="admin-apps-empty" class="admin-empty">No applications yet.</div>
               <table class="admin-table" id="admin-apps-table" style="display:none">
-                <thead><tr><th>Student</th><th>Job</th><th>Company</th><th>Fit Score</th><th>Status</th><th>Applied</th></tr></thead>
+                <thead><tr><th>Student</th><th>Job</th><th>Company</th><th>Fit Score</th><th>Status</th><th>Applied</th><th>Actions</th></tr></thead>
                 <tbody id="admin-apps-tbody"></tbody>
               </table>
             </div>

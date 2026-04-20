@@ -100,6 +100,11 @@ router.post('/auth/login', async (req: Request, res: Response) => {
       return;
     }
 
+    if (user.role === 'suspended') {
+      res.status(403).json({ error: 'Your account has been suspended. Contact support for help.' });
+      return;
+    }
+
     const token = jwt.sign({ userId: user.id, email: user.email, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
 
     res.json({

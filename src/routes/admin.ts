@@ -224,6 +224,70 @@ router.get('/admin/companies', requireAdmin, async (_req: AuthenticatedRequest, 
   }
 });
 
+// PATCH /api/admin/users/:id/role
+router.patch('/admin/users/:id/role', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  const { id } = req.params;
+  const { role } = req.body;
+  if (!['user', 'admin', 'suspended'].includes(role)) {
+    res.status(400).json({ error: 'Invalid role. Must be user, admin, or suspended.' });
+    return;
+  }
+  try {
+    const result = await pool.query(
+      'UPDATE users SET role = $1 WHERE id = $2 RETURNING id, full_name, email, role',
+      [role, id]
+    );
+    if (result.rows.length === 0) { res.status(404).json({ error: 'User not found' }); return; }
+    res.json({ success: true, user: result.rows[0] });
+  } catch (err) {
+    console.error('Admin update role error:', err);
+    res.status(500).json({ error: 'Failed to update role' });
+  }
+});
+
+// PATCH /api/admin/jobs/:id/status
+router.patch('/admin/jobs/:id/status', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  const { id } = req.params;
+  const { status } = req.body;
+  if (!['OPEN', 'CLOSED'].includes(status)) {
+    res.status(400).json({ error: 'Invalid status. Must be OPEN or CLOSED.' });
+    return;
+  }
+  try {
+    const result = await pool.query(
+      "UPDATE jobs SET status = $1, updated_at = now() WHERE id = $2 RETURNING id, title, status",
+      [status, id]
+    );
+    if (result.rows.length === 0) { res.status(404).json({ error: 'Job not found' }); return; }
+    res.json({ success: true, job: result.rows[0] });
+  } catch (err) {
+    console.error('Admin update job status error:', err);
+    res.status(500).json({ error: 'Failed to update job status' });
+  }
+});
+
+// PATCH /api/admin/applications/:id/status
+router.patch('/admin/applications/:id/status', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  const { id } = req.params;
+  const { status } = req.body;
+  const valid = ['APPLIED', 'INTERVIEWING', 'OFFERED', 'REJECTED', 'WITHDRAWN'];
+  if (!valid.includes(status)) {
+    res.status(400).json({ error: `Invalid status. Must be one of: ${valid.join(', ')}` });
+    return;
+  }
+  try {
+    const result = await pool.query(
+      'UPDATE job_applications SET status = $1 WHERE id = $2 RETURNING id, status',
+      [status, id]
+    );
+    if (result.rows.length === 0) { res.status(404).json({ error: 'Application not found' }); return; }
+    res.json({ success: true, application: result.rows[0] });
+  } catch (err) {
+    console.error('Admin update application status error:', err);
+    res.status(500).json({ error: 'Failed to update application status' });
+  }
+});
+
 // GET /api/admin/discovery
 router.get('/admin/discovery', requireAdmin, async (_req: AuthenticatedRequest, res: Response) => {
   try {

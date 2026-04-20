@@ -1943,6 +1943,12 @@ img { max-width: 100%; }
 .admin-status-badge--warning { background: #fef3c7; color: #92400e; }
 .admin-status-badge--info    { background: #dbeafe; color: #1e40af; }
 
+.admin-page-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .admin-search-input {
   padding: 8px 14px;
   border: 1px solid var(--border);
@@ -1950,10 +1956,47 @@ img { max-width: 100%; }
   font-size: 0.875rem;
   background: var(--dark-bg2);
   color: var(--text-main);
-  min-width: 240px;
+  min-width: 220px;
   outline: none;
 }
 .admin-search-input:focus { border-color: var(--green); }
+
+.admin-export-btn {
+  padding: 8px 16px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-light);
+  font-size: 0.8rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.admin-export-btn:hover { border-color: var(--green); color: var(--green); }
+
+.admin-action-select {
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--dark-bg2);
+  color: var(--text-main);
+  font-size: 0.78rem;
+  cursor: pointer;
+  outline: none;
+}
+.admin-action-select:focus { border-color: var(--green); }
+
+.admin-action-btn {
+  padding: 4px 12px;
+  border-radius: 6px;
+  border: none;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.admin-action-btn--danger  { background: #fee2e2; color: #b91c1c; }
+.admin-action-btn--danger:hover  { background: #fecaca; }
+.admin-action-btn--success { background: #dcfce7; color: #15803d; }
+.admin-action-btn--success:hover { background: #bbf7d0; }
 
 /* ── Alerts ── */
 .admin-alert {

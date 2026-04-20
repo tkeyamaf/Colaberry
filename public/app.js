@@ -929,33 +929,47 @@ function renderAdminOverview(data) {
 }
 
 // ---------------------------------------------------------------------------
-// Admin page loaders
+// Admin page loaders + action handlers
 // ---------------------------------------------------------------------------
+let _adminStudentRows = [];
+let _adminJobRows     = [];
+let _adminAppRows     = [];
+
 async function loadAdminStudents() {
   try {
     const res  = await fetch(`${API_BASE}/api/admin/students`, { headers: authHeaders() });
     const data = await res.json();
     if (!res.ok) { showToast(data.error || 'Could not load students.', 'error'); return; }
-    const allRows = data.students || [];
+    _adminStudentRows = data.students || [];
 
     function render(rows) {
-      renderAdminTable('admin-students-table', 'admin-students-tbody', 'admin-students-empty', rows, row => `<tr>
-        <td><strong>${escHtml(row.full_name)}</strong></td>
-        <td><span class="admin-table-sub">${escHtml(row.email)}</span></td>
-        <td>${escHtml(row.student_number || '—')}</td>
-        <td>${row.fit_score ?? '—'}</td>
-        <td><span class="admin-status-badge admin-status-badge--${row.profile_complete ? 'success' : 'error'}">${row.profile_complete ? 'Complete' : 'Incomplete'}</span></td>
-        <td>${escHtml([row.city, row.state].filter(Boolean).join(', ') || '—')}</td>
-        <td>${formatDate(row.created_at)}</td>
-      </tr>`);
+      renderAdminTable('admin-students-table', 'admin-students-tbody', 'admin-students-empty', rows, row => {
+        const roleColor = { admin: 'warning', suspended: 'error', user: 'info' }[row.role] || 'info';
+        return `<tr>
+          <td><strong>${escHtml(row.full_name)}</strong></td>
+          <td><span class="admin-table-sub">${escHtml(row.email)}</span></td>
+          <td>${escHtml(row.student_number || '—')}</td>
+          <td>${row.fit_score ?? '—'}</td>
+          <td><span class="admin-status-badge admin-status-badge--${row.profile_complete ? 'success' : 'error'}">${row.profile_complete ? 'Complete' : 'Incomplete'}</span></td>
+          <td>${escHtml([row.city, row.state].filter(Boolean).join(', ') || '—')}</td>
+          <td>${formatDate(row.created_at)}</td>
+          <td>
+            <select class="admin-action-select" data-user-id="${escHtml(row.id)}" onchange="adminChangeUserRole(this)">
+              <option value="user"      ${row.role === 'user'      ? 'selected' : ''}>User</option>
+              <option value="admin"     ${row.role === 'admin'     ? 'selected' : ''}>Admin</option>
+              <option value="suspended" ${row.role === 'suspended' ? 'selected' : ''}>Suspended</option>
+            </select>
+          </td>
+        </tr>`;
+      });
     }
 
-    render(allRows);
+    render(_adminStudentRows);
     const searchEl = document.getElementById('admin-students-search');
     if (searchEl) {
       searchEl.oninput = () => {
         const q = searchEl.value.toLowerCase();
-        render(q ? allRows.filter(r => (r.full_name + r.email).toLowerCase().includes(q)) : allRows);
+        render(q ? _adminStudentRows.filter(r => (r.full_name + r.email).toLowerCase().includes(q)) : _adminStudentRows);
       };
     }
   } catch (err) { console.error('loadAdminStudents error:', err); }
@@ -966,7 +980,7 @@ async function loadAdminJobs() {
     const res  = await fetch(`${API_BASE}/api/admin/jobs`, { headers: authHeaders() });
     const data = await res.json();
     if (!res.ok) { showToast(data.error || 'Could not load jobs.', 'error'); return; }
-    const allRows = data.jobs || [];
+    _adminJobRows = data.jobs || [];
 
     function render(rows) {
       renderAdminTable('admin-jobs-table', 'admin-jobs-tbody', 'admin-jobs-empty', rows, row => `<tr>
@@ -977,15 +991,22 @@ async function loadAdminJobs() {
         <td>${escHtml(row.weekly_allocations ?? 0)}</td>
         <td>${escHtml(row.total_allocations ?? 0)}</td>
         <td>${formatDate(row.created_at)}</td>
+        <td>
+          <button class="admin-action-btn admin-action-btn--${row.status === 'OPEN' ? 'danger' : 'success'}"
+            data-job-id="${escHtml(row.id)}" data-job-status="${escHtml(row.status)}"
+            onclick="adminToggleJobStatus(this)">
+            ${row.status === 'OPEN' ? 'Close' : 'Reopen'}
+          </button>
+        </td>
       </tr>`);
     }
 
-    render(allRows);
+    render(_adminJobRows);
     const searchEl = document.getElementById('admin-jobs-search');
     if (searchEl) {
       searchEl.oninput = () => {
         const q = searchEl.value.toLowerCase();
-        render(q ? allRows.filter(r => (r.title + r.company).toLowerCase().includes(q)) : allRows);
+        render(q ? _adminJobRows.filter(r => (r.title + r.company).toLowerCase().includes(q)) : _adminJobRows);
       };
     }
   } catch (err) { console.error('loadAdminJobs error:', err); }
@@ -996,13 +1017,15 @@ async function loadAdminApplications() {
     const res  = await fetch(`${API_BASE}/api/admin/applications`, { headers: authHeaders() });
     const data = await res.json();
     if (!res.ok) { showToast(data.error || 'Could not load applications.', 'error'); return; }
-    const allRows = data.applications || [];
+    _adminAppRows = data.applications || [];
 
     const statusColor = s => ({ APPLIED: 'info', INTERVIEWING: 'warning', OFFERED: 'success', REJECTED: 'error', WITHDRAWN: 'error' }[s] || 'info');
+    const appStatuses = ['APPLIED', 'INTERVIEWING', 'OFFERED', 'REJECTED', 'WITHDRAWN'];
 
     function render(rows) {
       renderAdminTable('admin-apps-table', 'admin-apps-tbody', 'admin-apps-empty', rows, row => {
         const s = (row.status || 'APPLIED').toUpperCase();
+        const opts = appStatuses.map(v => `<option value="${v}" ${v === s ? 'selected' : ''}>${v}</option>`).join('');
         return `<tr>
           <td><strong>${escHtml(row.full_name)}</strong><br><span class="admin-table-sub">${escHtml(row.email)}</span></td>
           <td>${escHtml(row.job_title)}</td>
@@ -1010,19 +1033,131 @@ async function loadAdminApplications() {
           <td>${row.fit_score ?? '—'}</td>
           <td><span class="admin-status-badge admin-status-badge--${statusColor(s)}">${escHtml(s)}</span></td>
           <td>${formatDate(row.applied_at)}</td>
+          <td>
+            <select class="admin-action-select" data-app-id="${escHtml(row.id)}" onchange="adminChangeAppStatus(this)">
+              ${opts}
+            </select>
+          </td>
         </tr>`;
       });
     }
 
-    render(allRows);
+    render(_adminAppRows);
     const searchEl = document.getElementById('admin-apps-search');
     if (searchEl) {
       searchEl.oninput = () => {
         const q = searchEl.value.toLowerCase();
-        render(q ? allRows.filter(r => (r.full_name + r.job_title + r.company).toLowerCase().includes(q)) : allRows);
+        render(q ? _adminAppRows.filter(r => (r.full_name + r.job_title + r.company).toLowerCase().includes(q)) : _adminAppRows);
       };
     }
   } catch (err) { console.error('loadAdminApplications error:', err); }
+}
+
+async function adminChangeUserRole(selectEl) {
+  const id   = selectEl.dataset.userId;
+  const role = selectEl.value;
+  try {
+    const res = await fetch(`${API_BASE}/api/admin/users/${id}/role`, {
+      method: 'PATCH', headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role }),
+    });
+    const data = await res.json();
+    if (!res.ok) { showToast(data.error || 'Failed to update role.', 'error'); return; }
+    showToast(`Role updated to ${role}.`, 'success');
+    const row = _adminStudentRows.find(r => r.id === id);
+    if (row) row.role = role;
+  } catch { showToast('Network error.', 'error'); }
+}
+
+async function adminToggleJobStatus(btn) {
+  const id         = btn.dataset.jobId;
+  const current    = btn.dataset.jobStatus;
+  const newStatus  = current === 'OPEN' ? 'CLOSED' : 'OPEN';
+  try {
+    const res = await fetch(`${API_BASE}/api/admin/jobs/${id}/status`, {
+      method: 'PATCH', headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: newStatus }),
+    });
+    const data = await res.json();
+    if (!res.ok) { showToast(data.error || 'Failed to update job.', 'error'); return; }
+    showToast(`Job ${newStatus === 'OPEN' ? 'reopened' : 'closed'}.`, 'success');
+    const row = _adminJobRows.find(r => r.id === id);
+    if (row) row.status = newStatus;
+    btn.dataset.jobStatus = newStatus;
+    btn.textContent = newStatus === 'OPEN' ? 'Close' : 'Reopen';
+    btn.className = `admin-action-btn admin-action-btn--${newStatus === 'OPEN' ? 'danger' : 'success'}`;
+    const td = btn.closest('tr')?.querySelector('td:nth-child(4)');
+    if (td) td.innerHTML = `<span class="admin-status-badge admin-status-badge--${newStatus === 'OPEN' ? 'success' : 'error'}">${newStatus}</span>`;
+  } catch { showToast('Network error.', 'error'); }
+}
+
+async function adminChangeAppStatus(selectEl) {
+  const id     = selectEl.dataset.appId;
+  const status = selectEl.value;
+  try {
+    const res = await fetch(`${API_BASE}/api/admin/applications/${id}/status`, {
+      method: 'PATCH', headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status }),
+    });
+    const data = await res.json();
+    if (!res.ok) { showToast(data.error || 'Failed to update application.', 'error'); return; }
+    showToast(`Application status updated to ${status}.`, 'success');
+    const statusColor = s => ({ APPLIED: 'info', INTERVIEWING: 'warning', OFFERED: 'success', REJECTED: 'error', WITHDRAWN: 'error' }[s] || 'info');
+    const td = selectEl.closest('tr')?.querySelector('td:nth-child(5)');
+    if (td) td.innerHTML = `<span class="admin-status-badge admin-status-badge--${statusColor(status)}">${status}</span>`;
+  } catch { showToast('Network error.', 'error'); }
+}
+
+function exportAdminCSV(rows, filename, columns) {
+  if (!rows.length) { showToast('No data to export.', 'error'); return; }
+  const header = columns.map(c => `"${c.label}"`).join(',');
+  const body   = rows.map(row =>
+    columns.map(c => `"${String(row[c.key] ?? '').replace(/"/g, '""')}"`).join(',')
+  ).join('\n');
+  const blob = new Blob([header + '\n' + body], { type: 'text/csv' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
+function exportStudentsCSV() {
+  exportAdminCSV(_adminStudentRows, 'students.csv', [
+    { label: 'Full Name',   key: 'full_name' },
+    { label: 'Email',       key: 'email' },
+    { label: 'Student #',   key: 'student_number' },
+    { label: 'Fit Score',   key: 'fit_score' },
+    { label: 'Profile Complete', key: 'profile_complete' },
+    { label: 'City',        key: 'city' },
+    { label: 'State',       key: 'state' },
+    { label: 'Role',        key: 'role' },
+    { label: 'Joined',      key: 'created_at' },
+  ]);
+}
+
+function exportJobsCSV() {
+  exportAdminCSV(_adminJobRows, 'jobs.csv', [
+    { label: 'Title',         key: 'title' },
+    { label: 'Company',       key: 'company' },
+    { label: 'Location',      key: 'location' },
+    { label: 'Status',        key: 'status' },
+    { label: 'This Week',     key: 'weekly_allocations' },
+    { label: 'Total',         key: 'total_allocations' },
+    { label: 'Posted',        key: 'created_at' },
+  ]);
+}
+
+function exportAppsCSV() {
+  exportAdminCSV(_adminAppRows, 'applications.csv', [
+    { label: 'Student Name',  key: 'full_name' },
+    { label: 'Email',         key: 'email' },
+    { label: 'Student #',     key: 'student_number' },
+    { label: 'Job Title',     key: 'job_title' },
+    { label: 'Company',       key: 'company' },
+    { label: 'Fit Score',     key: 'fit_score' },
+    { label: 'Status',        key: 'status' },
+    { label: 'Applied',       key: 'applied_at' },
+  ]);
 }
 
 async function loadAdminCompanies() {
